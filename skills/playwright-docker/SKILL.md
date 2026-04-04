@@ -12,8 +12,8 @@ description: >
 # Playwright Docker Skill
 
 Manages a Dockerized Playwright + noVNC browser for Claude Code automation. Built on
-[xtr-dev/mcp-playwright-novnc](https://github.com/xtr-dev/mcp-playwright-novnc) with
-minimal modifications for Claude Code compatibility.
+[xtr-dev/mcp-playwright-novnc](https://github.com/xtr-dev/mcp-playwright-novnc) (git
+submodule) with minimal modifications for Claude Code compatibility.
 
 **Assets location**: `~/workspace/agent-tools/skills/playwright-docker/assets/`
 
@@ -26,13 +26,29 @@ minimal modifications for Claude Code compatibility.
 
 ### Upstream modifications
 
-Only two changes from upstream, both in the `start-mcp.sh` mount:
+The upstream source lives in `assets/mcp-playwright-novnc/` as a **git submodule**. We
+overlay two changes without modifying it:
 
-1. **`--output-dir /tmp/.playwright-mcp`** — Claude Code sends MCP `roots` with host
-   filesystem paths that don't exist inside the container. Without this, the server tries
-   to `mkdir` at those paths and fails with EACCES.
-2. **Local image build** — the upstream GHCR package (`ghcr.io/xtr-dev/mcp-playwright-novnc`)
-   is private/unavailable, so we build from the bundled source clone.
+1. **`--output-dir /tmp/.playwright-mcp`** (in `start-mcp.sh` mount) — Claude Code sends
+   MCP `roots` with host filesystem paths that don't exist inside the container. Without
+   this, the server tries to `mkdir` at those paths and fails with EACCES.
+2. **Local image build** — the upstream GHCR package is private/unavailable, so
+   `docker-compose.yml` uses `build: context: ./mcp-playwright-novnc` instead.
+
+## Prerequisites
+
+Before any sub-command, ensure the submodule is initialized and the image exists:
+
+```bash
+# Initialize submodule (no-op if already present)
+cd ~/workspace/agent-tools
+git submodule update --init skills/playwright-docker/assets/mcp-playwright-novnc
+
+# Build image (uses cache if unchanged, safe to run repeatedly)
+export RESUME_REPO_PATH=~/workspace/resume
+cd ~/workspace/agent-tools/skills/playwright-docker/assets
+docker compose build
+```
 
 ## Sub-Commands
 
@@ -43,7 +59,10 @@ Run once to start the container and wire up the MCP server in Claude Code.
 #### 1. Build and start the container
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume   # or adjust to your resume repo path
+cd ~/workspace/agent-tools
+git submodule update --init skills/playwright-docker/assets/mcp-playwright-novnc
+
+export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose up -d --build
 ```
@@ -53,21 +72,22 @@ Verify it's running:
 docker ps | grep playwright-display
 ```
 
-noVNC should be accessible at http://localhost:6080/vnc.html.
-
-The browser does not launch until the first MCP tool call (e.g. `browser_navigate`).
-
-**Important**: After restarting the container, you must restart your Claude Code conversation
-(or reconnect the MCP server via `/mcp`) so the proxy gets a fresh session ID.
+noVNC is at http://localhost:6080/vnc.html. The browser itself does not launch until the
+first MCP tool call.
 
 #### 2. Add the MCP server (user-scoped, persists across all projects)
 
+Check if already configured:
+```bash
+grep -q playwright ~/.claude.json && echo "already configured"
+```
+
+If not:
 ```bash
 claude mcp add --scope user playwright -- docker run --rm -i --network=playwright-network mcp-playwright-novnc:local mcp-proxy http://playwright-display:3080/sse
 ```
 
-This connects Claude Code to the long-running container via a stdio-to-SSE proxy. Tools
-will be available as `mcp__playwright__browser_*`.
+Tools will be available as `mcp__playwright__browser_*`.
 
 #### 3. Verify
 
@@ -98,6 +118,9 @@ cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose restart
 ```
 
+**Important**: After any restart, the MCP proxy holds a stale session ID. Either start a
+new Claude Code conversation or run `/mcp` to reconnect.
+
 ### `status` — Check health
 
 ```bash
@@ -105,6 +128,49 @@ docker ps --filter name=playwright-display --format "table {{.Names}}\t{{.Status
 ```
 
 Also confirm MCP connectivity: `mcp__playwright__browser_navigate` to `https://google.com`.
+
+### `update` — Pull upstream changes
+
+```bash
+cd ~/workspace/agent-tools
+git submodule update --remote skills/playwright-docker/assets/mcp-playwright-novnc
+
+export RESUME_REPO_PATH=~/workspace/resume
+cd ~/workspace/agent-tools/skills/playwright-docker/assets
+docker compose up -d --build
+```
+
+This pulls the latest upstream commit, rebuilds the image, and restarts the container.
+After updating, reconnect the MCP server (new conversation or `/mcp`).
+
+---
+
+## Troubleshooting
+
+### `MCP error -32603: HTTP 404: Session not found`
+
+The MCP proxy has a stale session from before a container restart. Fix: start a new
+conversation or run `/mcp` to reconnect. If that doesn't work, kill the stale proxy:
+
+```bash
+docker ps --filter "ancestor=mcp-playwright-novnc:local" --format "{{.ID}} {{.Command}}" | grep "mcp-" | awk '{print $1}' | xargs -r docker kill
+```
+
+Then reconnect via `/mcp`.
+
+### `mcp__playwright__` tools not available
+
+The MCP server isn't connected. Check:
+1. Container running? `docker ps | grep playwright-display`
+2. MCP configured? `grep playwright ~/.claude.json`
+3. If both yes, run `/mcp` to reconnect.
+
+### `EACCES: permission denied, mkdir`
+
+The `--output-dir` workaround isn't active. Check that `start-mcp.sh` is mounted:
+```bash
+docker exec playwright-display cat /usr/local/bin/start-mcp.sh | grep output-dir
+```
 
 ---
 
@@ -145,14 +211,13 @@ Use `browser_file_upload` with the container-internal path. The resume repo is m
 
 ## Container Lifecycle
 
-The container is configured with `restart: unless-stopped`, so it survives reboots automatically.
+The container is configured with `restart: unless-stopped`, so it survives reboots.
 
 ```bash
-# All management commands run from:
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 
 docker compose up -d --build  # Start/rebuild
-docker compose restart        # Restart
+docker compose restart        # Restart (reconnect MCP after)
 docker compose down           # Stop
 ```
 
