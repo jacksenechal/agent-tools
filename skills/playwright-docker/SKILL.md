@@ -2,18 +2,18 @@
 name: playwright-docker
 description: >
   Dockerized Playwright + noVNC browser automation. Manages headless Chromium in Docker
-  with persistent browser profiles, file upload support, and MCP integration.
+  with file upload support and MCP integration. Browser sessions are isolated (ephemeral).
   Use as the default browser automation tool for any task requiring web interaction,
   form filling, scraping, or automated browsing.
   Triggers on: "playwright setup", "playwright start", "playwright stop", "playwright status",
-  "playwright login", "browser docker", "start browser", "browser automation setup".
+  "browser docker", "start browser", "browser automation setup".
 ---
 
 # Playwright Docker Skill
 
-Manages a Dockerized Playwright + noVNC browser for Claude Code automation. This provides
-headless Chromium in Docker with a visual noVNC interface, persistent login sessions, and
-full file upload support via `mcp__playwright__` tools.
+Manages a Dockerized Playwright + noVNC browser for Claude Code automation. Built on
+[xtr-dev/mcp-playwright-novnc](https://github.com/xtr-dev/mcp-playwright-novnc) with
+minimal modifications for Claude Code compatibility.
 
 **Assets location**: `~/workspace/agent-tools/skills/playwright-docker/assets/`
 
@@ -21,8 +21,18 @@ full file upload support via `mcp__playwright__` tools.
 
 - **Docker container** (`playwright-display`): Runs Chromium + Microsoft Playwright MCP server + noVNC
 - **MCP connection**: Claude Code connects via `mcp__playwright__` tools (stdio → SSE proxy)
-- **Profile volume** (`playwright-profile`): Persists browser sessions across restarts
-- **noVNC**: http://localhost:6080 — watch or manually interact with the browser in real time
+- **noVNC**: http://localhost:6080/vnc.html — watch or manually interact with the browser in real time
+- **Browser sessions are ephemeral** (`--isolated`): each MCP connection gets a fresh browser
+
+### Upstream modifications
+
+Only two changes from upstream, both in the `start-mcp.sh` mount:
+
+1. **`--output-dir /tmp/.playwright-mcp`** — Claude Code sends MCP `roots` with host
+   filesystem paths that don't exist inside the container. Without this, the server tries
+   to `mkdir` at those paths and fails with EACCES.
+2. **Local image build** — the upstream GHCR package (`ghcr.io/xtr-dev/mcp-playwright-novnc`)
+   is private/unavailable, so we build from the bundled source clone.
 
 ## Sub-Commands
 
@@ -30,12 +40,12 @@ full file upload support via `mcp__playwright__` tools.
 
 Run once to start the container and wire up the MCP server in Claude Code.
 
-#### 1. Start the container
+#### 1. Build and start the container
 
 ```bash
 export RESUME_REPO_PATH=~/workspace/resume   # or adjust to your resume repo path
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
-docker compose up -d
+docker compose up -d --build
 ```
 
 Verify it's running:
@@ -43,26 +53,23 @@ Verify it's running:
 docker ps | grep playwright-display
 ```
 
-noVNC should be accessible at http://localhost:6080.
+noVNC should be accessible at http://localhost:6080/vnc.html.
+
+The browser does not launch until the first MCP tool call (e.g. `browser_navigate`).
+
+**Important**: After restarting the container, you must restart your Claude Code conversation
+(or reconnect the MCP server via `/mcp`) so the proxy gets a fresh session ID.
 
 #### 2. Add the MCP server (user-scoped, persists across all projects)
 
 ```bash
-claude mcp add --scope user playwright -- docker run --rm -i --network=playwright-network ghcr.io/xtr-dev/mcp-playwright-novnc:latest mcp-proxy http://playwright-display:3080/sse
+claude mcp add --scope user playwright -- docker run --rm -i --network=playwright-network mcp-playwright-novnc:local mcp-proxy http://playwright-display:3080/sse
 ```
 
 This connects Claude Code to the long-running container via a stdio-to-SSE proxy. Tools
 will be available as `mcp__playwright__browser_*`.
 
-#### 3. Log into sites (one-time per site)
-
-Open http://localhost:6080. In the noVNC view, manually navigate and log in to any sites
-you want the browser to stay authenticated to (e.g. LinkedIn). Sessions persist in the
-`playwright-profile` Docker volume across container restarts.
-
-**The agent NEVER handles credentials — you always type them yourself in the noVNC window.**
-
-#### 4. Verify
+#### 3. Verify
 
 Call `mcp__playwright__browser_navigate` to `https://google.com` and confirm
 `mcp__playwright__browser_snapshot` returns content.
@@ -74,7 +81,7 @@ Call `mcp__playwright__browser_navigate` to `https://google.com` and confirm
 ```bash
 export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
-docker compose up -d
+docker compose up -d --build
 ```
 
 ### `stop` — Stop the container
@@ -83,8 +90,6 @@ docker compose up -d
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose down
 ```
-
-This preserves the `playwright-profile` volume (sessions intact).
 
 ### `restart` — Restart the container
 
@@ -100,24 +105,6 @@ docker ps --filter name=playwright-display --format "table {{.Names}}\t{{.Status
 ```
 
 Also confirm MCP connectivity: `mcp__playwright__browser_navigate` to `https://google.com`.
-
-### `reset-session` — Clear browser profile (re-login required)
-
-```bash
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
-docker compose down -v   # deletes playwright-profile volume
-docker compose up -d
-```
-
-Use this if sessions become corrupted or you need a clean slate.
-
-### `login <site>` — Log into a site manually
-
-1. Ensure container is running (`/playwright-docker status`)
-2. Open http://localhost:6080 in your browser
-3. In the noVNC window, the agent navigates to `<site>/login`
-4. You type your credentials in the noVNC window
-5. Session is saved to the `playwright-profile` volume automatically
 
 ---
 
@@ -164,10 +151,9 @@ The container is configured with `restart: unless-stopped`, so it survives reboo
 # All management commands run from:
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 
-docker compose up -d      # Start (preserves profile volume)
-docker compose restart    # Restart (preserves profile volume)
-docker compose down       # Stop (preserves profile volume)
-docker compose down -v    # Stop AND delete profile volume (resets all sessions)
+docker compose up -d --build  # Start/rebuild
+docker compose restart        # Restart
+docker compose down           # Stop
 ```
 
 ---
@@ -175,6 +161,6 @@ docker compose down -v    # Stop AND delete profile volume (resets all sessions)
 ## Requirements
 
 - Docker and Docker Compose
-- ~2GB disk for the image (`ghcr.io/xtr-dev/mcp-playwright-novnc:latest`)
+- ~3GB disk for the locally-built image
 - ~1GB RAM while running
 - Port 6080 (noVNC) and 3080 (MCP SSE) available locally

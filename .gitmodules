@@ -1,0 +1,3 @@
+[submodule "skills/playwright-docker/assets/mcp-playwright-novnc"]
+	path = skills/playwright-docker/assets/mcp-playwright-novnc
+	url = https://github.com/xtr-dev/mcp-playwright-novnc.git
