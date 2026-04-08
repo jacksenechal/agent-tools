@@ -57,7 +57,14 @@ overlay changes without modifying it:
 
 ## Prerequisites
 
-Before any sub-command, ensure the submodule is initialized and the image exists:
+Before any sub-command, ensure the submodule is initialized and the image exists.
+
+**All `docker compose` commands require `RESUME_REPO_PATH`** (the compose file mounts it
+as a volume). Set it before every docker compose invocation:
+
+```bash
+export RESUME_REPO_PATH=~/workspace/resume
+```
 
 ```bash
 # Initialize submodule (no-op if already present)
@@ -65,7 +72,6 @@ cd ~/workspace/agent-tools
 git submodule update --init skills/playwright-docker/assets/mcp-playwright-novnc
 
 # Build image (uses cache if unchanged, safe to run repeatedly)
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose build
 ```
@@ -82,7 +88,6 @@ Run once to start the container and wire up the MCP server in Claude Code.
 cd ~/workspace/agent-tools
 git submodule update --init skills/playwright-docker/assets/mcp-playwright-novnc
 
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose up -d --build
 ```
@@ -119,9 +124,7 @@ Call `mcp__playwright__browser_navigate` to `https://google.com` and confirm
 ### `golden open` — Start using the golden session
 
 The golden Chromium browser starts automatically with the container (visible in noVNC).
-To automate it via Claude Code:
-
-To connect Claude Code to the golden session (for explicit automation):
+To connect Claude Code to the golden session for automation:
 ```bash
 claude mcp add --scope user playwright-golden -- docker run --rm -i --network=playwright-network mcp-playwright-novnc:local mcp-proxy http://playwright-display:3081/sse
 ```
@@ -144,7 +147,6 @@ at process startup, so after exporting you need to restart the container for iso
 sessions to pick up the new auth state:
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose restart
 ```
@@ -171,7 +173,6 @@ The golden browser process continues running in the container (logins persist).
 ### `start` — Start the container
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose up -d --build
 ```
@@ -179,7 +180,6 @@ docker compose up -d --build
 ### `stop` — Stop the container
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose down
 ```
@@ -187,7 +187,6 @@ docker compose down
 ### `restart` — Restart the container
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose restart
 ```
@@ -217,7 +216,6 @@ Also confirm MCP connectivity: `mcp__playwright__browser_navigate` to `https://g
 cd ~/workspace/agent-tools
 git submodule update --remote skills/playwright-docker/assets/mcp-playwright-novnc
 
-export RESUME_REPO_PATH=~/workspace/resume
 cd ~/workspace/agent-tools/skills/playwright-docker/assets
 docker compose up -d --build
 ```
@@ -297,12 +295,23 @@ Use `browser_file_upload` with the container-internal path. The resume repo is m
 /home/pwuser/resume/resume.pdf
 ```
 
-### Form-filling gotchas
+### CAPTCHA / Security Challenge Detection
 
-- **Lever combobox dropdowns**: Don't work with `browser_select_option`. Use click → `ArrowDown` → `Enter`.
-- **Standard HTML `<select>`** (e.g., EEO fields): Use `browser_select_option` normally.
-- **Location autocomplete**: Type city name only (e.g., "Portland"), wait for suggestions, `ArrowDown` + `Enter`.
-- **Stale refs**: After each `browser_type` or `browser_click`, refs update. Always use refs from the most recent snapshot.
+After every `browser_snapshot` or `browser_screenshot`, check for:
+- CAPTCHA challenges (reCAPTCHA, hCaptcha, Cloudflare Turnstile, puzzle challenges, "verify you are human")
+- "Unusual activity detected" or "suspicious activity" messages
+- Login/verification prompts that weren't expected
+- Any security checkpoint or bot-detection interstitial
+
+**If detected, IMMEDIATELY:**
+1. **STOP** all browser automation — do not attempt another action on the site
+2. Navigate to `google.com` to leave the blocked page
+3. **Ask the user** to resolve it manually via noVNC at http://localhost:6080/vnc.html
+4. **Wait** for the user to confirm the challenge is resolved before resuming
+5. Do NOT attempt to solve, bypass, or retry past the challenge
+
+This applies to ALL sites — LinkedIn, Glassdoor, Greenhouse, Lever, Workday, or any other.
+Captchas are a signal that automation has been detected; continuing will make it worse.
 
 ---
 
@@ -320,9 +329,6 @@ docker compose restart        # Restart (reconnect MCP after)
 docker compose down           # Stop (golden profile preserved)
 docker compose down -v        # Stop and delete golden profile + storage state
 ```
-
-**Note**: `RESUME_REPO_PATH` must be set for all `docker compose` commands (the compose
-file references it for the resume volume mount).
 
 ---
 
