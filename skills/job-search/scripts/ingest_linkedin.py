@@ -2,8 +2,8 @@
 Ingest LinkedIn data exports into ArcadeDB knowledge graph.
 
 Run from your job-search repo root so relative paths to data/linkedin/ resolve:
-    cd ~/workspace/job-search
-    python3 ~/workspace/agent-tools/skills/job-search-kg/scripts/ingest_linkedin.py --me-name "Your Full Name"
+    cd ~/workspace/jobs
+    python3 ~/workspace/agent-tools/skills/job-search/scripts/ingest_linkedin.py --me-name "Your Full Name"
 
 Your full name must match how your name appears in LinkedIn message exports
 (used to determine message direction: Inbound vs. Outbound).

@@ -1,12 +1,12 @@
 # Tracker CSV Schema
 
-File: `~/workspace/job-search/tracker.csv`
+File: `~/workspace/jobs/tracker.csv`
 
 ## Fields
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string | yes | Slug identifier. Matches resume branch suffix (`job/<id>`) and research dir (`jobs/<id>/`). E.g., `stripe-infra-eng`, `navan-ai-ex` |
+| `id` | string | yes | Slug identifier. Matches resume branch suffix (`job/<id>`) and research dir (`applications/<id>/`). E.g., `stripe-infra-eng`, `navan-ai-ex` |
 | `company` | string | yes | Company name |
 | `role` | string | yes | Job title |
 | `url` | string | yes | LinkedIn job posting URL |

@@ -13,11 +13,20 @@ UNITS=(
   job-search-liveness.timer
   job-search-northbay.service
   job-search-northbay.timer
+  job-search-digest.service
+  job-search-digest.timer
+)
+
+ENABLE_TIMERS=(
+  job-search-discover.timer
+  job-search-liveness.timer
+  job-search-northbay.timer
+  job-search-digest.timer
 )
 
 uninstall() {
   echo "Disabling timers..."
-  systemctl --user disable --now job-search-discover.timer job-search-liveness.timer job-search-northbay.timer || true
+  systemctl --user disable --now "${ENABLE_TIMERS[@]}" || true
 
   echo "Removing unit files..."
   for unit in "${UNITS[@]}"; do
@@ -41,7 +50,7 @@ for unit in "${UNITS[@]}"; do
 done
 
 systemctl --user daemon-reload
-systemctl --user enable --now job-search-discover.timer job-search-liveness.timer job-search-northbay.timer
+systemctl --user enable --now "${ENABLE_TIMERS[@]}"
 
 echo
 echo "Installed. Current timers:"

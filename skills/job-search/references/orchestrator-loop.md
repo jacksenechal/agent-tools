@@ -1,7 +1,19 @@
 # Orchestrator Loop
 
 A long-running background loop that keeps the pipeline fed and current without the user
-driving it. Two scheduled jobs: **daily discovery** and **weekly liveness + sync**.
+driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), the **daily morning
+digest** (`digest`, 08:30), **weekly liveness + sync** (`liveness`, Sundays 10:00), and a
+**weekly North Bay re-scout** (`northbay`, Tuesdays 09:00, which runs
+`~/workspace/jobs/strategy/north-bay-rescout.md` end to end).
+
+Discovery runs early and the digest at 08:30 so the morning report covers that morning's finds
+and is waiting by 09:00. Discovery's jitter is deliberately small (15 min) for the same reason;
+a 90 minute jitter would let it finish after the digest had already run.
+
+All four are modes of `scripts/orchestrator.sh <discover|liveness|northbay|digest>`, which is
+also how to run one by hand. `digest` is the only mode that needs no browser, so it skips the
+golden-session check. Installed timers are the ground truth for what is actually running:
+`systemctl --user list-timers 'job-search-*'`.
 
 ## Why systemd, not CronCreate or /loop
 

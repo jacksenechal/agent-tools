@@ -106,7 +106,7 @@ If a `browser_snapshot` or `browser_screenshot` reveals:
 - Never leave a LinkedIn page open in the background while doing other browser work
 
 ### 10. Audit Trail
-If configured, browser navigations can be logged to `~/workspace/job-search/linkedin-audit.log`
+If configured, browser navigations can be logged to `~/workspace/jobs/linkedin-audit.log`
 via a Claude Code hook. This creates accountability. If the user asks how many LinkedIn pages
 were accessed, check this log.
 

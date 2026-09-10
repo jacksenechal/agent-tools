@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Orchestrator loop entry point. Invoked by systemd timers (job-search-discover.timer,
-# job-search-liveness.timer) or manually. See references/orchestrator-loop.md for the
-# design this implements.
+# job-search-liveness.timer, job-search-northbay.timer, job-search-digest.timer) or manually.
+# See references/orchestrator-loop.md for the design this implements.
 set -euo pipefail
 
 usage() {
-  echo "Usage: $(basename "$0") <discover|liveness|northbay> [--force] [--dry-run]" >&2
+  echo "Usage: $(basename "$0") <discover|liveness|northbay|digest> [--force] [--dry-run]" >&2
 }
 
 MODE="${1:-}"
 shift || true
 
-if [[ "$MODE" != "discover" && "$MODE" != "liveness" && "$MODE" != "northbay" ]]; then
+if [[ "$MODE" != "discover" && "$MODE" != "liveness" && "$MODE" != "northbay" && "$MODE" != "digest" ]]; then
   usage
   exit 2
 fi
@@ -78,7 +78,8 @@ browser_up() {
   docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "playwright-display"
 }
 
-if ! browser_up; then
+# digest only reads the repo and republishes an artifact, so it needs no browser.
+if [[ "$MODE" != "digest" ]] && ! browser_up; then
   if [[ -f "$PW_ASSETS/docker-compose.yml" ]]; then
     echo "golden browser not running; starting via docker compose in $PW_ASSETS" >&2
     (cd "$PW_ASSETS" && docker compose up -d) || true
@@ -104,6 +105,7 @@ case "$MODE" in
   discover) PROMPT="/job-search discover" ;;
   liveness) PROMPT="/job-search liveness" ;;
   northbay) PROMPT="Read $JOBS_DIR/strategy/north-bay-rescout.md and execute it end to end." ;;
+  digest)   PROMPT="/job-search digest" ;;
 esac
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

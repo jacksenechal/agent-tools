@@ -1,9 +1,9 @@
 [Unit]
-Description=Daily timer for job search discovery
+Description=Daily timer for job search discovery (early, so the 08:30 digest reports on it)
 
 [Timer]
-OnCalendar=*-*-* 09:00:00
-RandomizedDelaySec=5400
+OnCalendar=*-*-* 06:00:00
+RandomizedDelaySec=900
 Persistent=true
 
 [Install]

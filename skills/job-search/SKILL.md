@@ -23,9 +23,18 @@ Any job-pipeline task. Beyond the phrases in the description, this also covers:
 "scan bookmarks", "still open", "orchestrator loop", "scout", "vet", "coherence read", and
 "find high-coherence companies".
 
-The orchestrator runs on timers rather than on request: a daily scan of saved-job lists
-(`discover`) and a weekly posting-liveness sweep plus saved-list sync (`liveness`). See
-those sub-commands below, and `watch setup` to install the timers.
+The orchestrator runs on timers rather than on request:
+
+| Mode | Schedule | What it does |
+|---|---|---|
+| `discover` | daily 06:00 (+15m jitter) | scan saved-job lists, auto-add, research |
+| `digest` | daily 08:30 (+5m jitter) | rebuild and republish the morning status artifact |
+| `liveness` | Sundays 10:00 | are pre-application postings still open, sync saved lists |
+| `northbay` | Tuesdays 09:00 | run `strategy/north-bay-rescout.md` end to end |
+
+`discover` runs early and `digest` at 08:30 so the morning report covers *this* morning's
+finds and is waiting by 09:00. See those sub-commands below, and `watch setup` to install the
+timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
 
 ## Project Locations
 
@@ -33,8 +42,20 @@ those sub-commands below, and `watch setup` to install the timers.
 - **Tracker**: `~/workspace/jobs/tracker.csv`
 - **Job research**: `~/workspace/jobs/applications/<id>/`
 - **Archived job research** (dead tracker rows): `~/workspace/jobs/applications/archived/<id>/`
-- **Resume repo**: `~/workspace/resume/` (separate git repo)
+- **Resume repo**: `~/workspace/resume/` (separate git repo, **public**). Source of truth is
+  `resume.md` on `main`. The working tree is often checked out on a `job/*` tailoring branch,
+  so **always read it as `git -C ~/workspace/resume show main:resume.md`**, never from the
+  working tree, or you will treat a tailored variant as canonical.
+- **Canonical facts**: `~/workspace/jobs/strategy/facts.md` — atomic, sourced claims plus the
+  "do NOT claim" guardrails. Every externally-facing claim is selected from here.
+- **Project narratives and framing constraints**: `~/workspace/jobs/strategy/narrative.md`
+- **Banned claim strings**: `~/workspace/jobs/strategy/claim-guards.txt`
+- **Personal website**: `~/workspace/jacksenechal.com/` (Jekyll, **public**:
+  github.com/jacksenechal/jacksenechal.com). A named source for the fact check: anything here
+  is already public and citable, and outward claims must not contradict it.
 - **LinkedIn safety rules**: See `references/linkedin-safety.md` — READ THIS before any LinkedIn browsing
+- **External output gate**: See `references/external-output-gate.md` — READ THIS before drafting
+  any cover letter, application answer, or outreach message
 
 ## Browser Automation
 
@@ -106,6 +127,16 @@ company research, which needs no browser session.
 A local ArcadeDB graph of LinkedIn connections ranked by warmth. Used in Stage 5 to
 prioritize outreach. Run `/job-search kg setup` to initialize.
 See `references/knowledge-graph.md` for setup, schema, warmth algorithm, and query patterns.
+
+## External Output Gate
+
+Anything a hiring organization will read (cover letters, application answers, outreach and
+recruiter messages, follow-ups, changed resume bullets) passes a two-agent gate before it is
+"ready": a **fact check** on the raw draft, then a **`no-ai-slop` pass** for voice, then a
+deterministic `scripts/check_claims.sh` run. Facts settle before prose gets polished.
+
+This is not optional and not a judgment call per artifact. Full protocol, corpus, verdict
+scheme, and propagation rule: `references/external-output-gate.md`.
 
 ## Sub-Commands
 
@@ -209,8 +240,8 @@ Walk through the full pipeline for a new job posting end-to-end.
 1. `cd ~/workspace/resume && git fetch --all --prune`
 2. List remote branches (`git branch -r`), find the closest `role/` archetype. Do not ask the user.
 3. Create branch: `git checkout -b job/<id> origin/<base-branch>`
-4. Read `CONTEXT.md` — respect all factual constraints
-5. Read `resume.md` and the saved job description
+4. Read `~/workspace/jobs/strategy/narrative.md` and `~/workspace/jobs/strategy/facts.md` — respect all factual constraints and guardrails. (This repo is public; the factual constraints live in the private jobs repo, not here.)
+5. Read `resume.md` (confirm you are on the new branch, not a stale `job/*` checkout) and the saved job description
 6. Tailor `resume.md`: adjust Summary, reorder/emphasize bullets, update Skills, compress less-relevant experience. Keep ATS-friendly formatting (see `resume/AGENTS.md`)
 7. Run `./_publish` to generate HTML and PDF
 8. Copy the PDF into the job directory with a descriptive filename:
@@ -259,6 +290,11 @@ to claim, which narrative to lead with, and how to handle a weak spot honestly i
 work, and a fluent wrong answer here is worse than no draft. Sonnet may be handed a settled
 angle to polish, but not the decision of what the angle is.
 
+**Every artifact produced in this stage passes the External Output Gate**
+(`references/external-output-gate.md`) before it is rendered or presented: fact check on the
+raw draft, reconcile, `no-ai-slop` pass, then `scripts/check_claims.sh`. Do not render a PDF
+or tell the user a draft is ready until all three have run.
+
 **Any text the user will send verbatim must be immediately copy-pasteable.** This covers
 application answers, cover letters, outreach messages, and recruiter replies. Two hard rules:
 
@@ -271,12 +307,23 @@ application answers, cover letters, outreach messages, and recruiter replies. Tw
 
 For any written questions or essays identified in Stage 3:
 
-1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, tailored `resume.md`, and `~/workspace/resume/CONTEXT.md`
-2. Draft responses: specific to the user's experience, tailored to role and company, concise, honest per CONTEXT.md constraints
-3. Save to `applications/<id>/application-responses.md` with each question clearly labeled. If no written questions, note that.
+1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, `applications/<id>/company-research.md`, the tailored `resume.md`, `~/workspace/jobs/strategy/facts.md`, and `~/workspace/jobs/strategy/narrative.md`
+2. Draft responses: specific to the user's experience, tailored to role and company, concise, and honest per the guardrails in `facts.md`. Build every claim by selecting a line from `facts.md`, not by paraphrasing `narrative.md` into a fresh assertion.
+3. Run the gate on the draft:
+   a. **Fact check** — spawn a `sonnet` subagent, read-only, per `references/external-output-gate.md`.
+      It returns a claim table with verdicts and quoted evidence. It never rewrites.
+   b. **Reconcile** on the main thread. Apply every blocking fix yourself. Spot-check any
+      quote the checker attributes to a source file; a checker that paraphrases is wrong.
+   c. **Slop pass** — spawn a `sonnet` subagent running the `no-ai-slop` skill in Edit mode,
+      with the instruction that it may cut and rephrase but must not add, sharpen, or
+      quantify any claim.
+   d. **Mechanical check** — `scripts/check_claims.sh <file>`. Must exit clean.
+   e. Append the fact-check verdict table to `applications/<id>/fact-check.md`.
+4. Save to `applications/<id>/application-responses.md` with each question clearly labeled. If no written questions, note that.
 
 **Cover letters**: when a posting wants a cover letter (or it strengthens the app), draft it to
-`applications/<id>/cover-letter.md` (plain markdown; a leading `# ...` title line is treated as
+`applications/<id>/cover-letter.md`, run the full gate on it (fact check, reconcile, slop pass,
+`check_claims.sh`), and only then render the PDF (plain markdown; a leading `# ...` title line is treated as
 an internal doc title and dropped from the PDF). Render a styled, one-page PDF with the shared
 template script — do NOT hand-roll pandoc/Chrome styling each time:
 
@@ -339,6 +386,9 @@ Outreach principles:
 - Hiring manager: research anything they've published or spoken about first
 - Always recommend applying regardless — referral is a booster, not a gate
 
+Any outreach message drafted here is externally-facing and passes the External Output Gate
+(`references/external-output-gate.md`) before it is presented to the user as sendable.
+
 #### Step 5: Save and update tracker
 
 Save to `applications/<id>/connections.md` using the template in `references/knowledge-graph.md`.
@@ -350,7 +400,7 @@ Update tracker: `referral_contact` with top recommendation, `referral_status=ide
 2. Update tracker: `stage=ready_to_apply`
 3. Commit and push job-search repo:
    ```bash
-   cd ~/workspace/job-search
+   cd ~/workspace/jobs
    git add -A
    git commit -m "Add <company> <role> application package"
    git push
@@ -448,6 +498,29 @@ One command: `scout` → `vet` on every new company → `add` (Stages 1-6) for e
 verdict is `Advance` and whose posting is live. Stops before any submission, as always. See
 `references/coherence-pipeline.md` for the runbook and the expected shape of a run.
 
+### `digest` — Daily morning status artifact (orchestrator)
+
+Rebuilds and republishes the one-page status view Jack reads over coffee. Needs no browser.
+
+1. `cd ~/workspace/jobs && python3 artifact/digest.py` — regenerates `artifact/digest.html`
+   entirely from repo data (`tracker.csv`, `git log`, `orchestrator.log`, `check_claims.sh`).
+   Nothing in it is hardcoded, so it cannot go stale the way a written-down snapshot does.
+2. Publish `artifact/digest.html` with the Artifact tool, passing the pinned digest URL from
+   `artifact/README.md` as `url`. **Never create a new artifact**; the whole point is that the
+   same link is good every morning.
+3. Do not commit `artifact/digest.html`. It is regenerated every morning and gitignored;
+   `digest.py` and its template are the versioned artifacts.
+
+Section order is deliberate: what needs Jack today, then state of play, then what changed,
+then what is aging, then warnings. Action first, noise last.
+
+### `northbay` — Weekly North Bay re-scout (orchestrator)
+
+Runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end. Installed as
+`job-search-northbay.timer` (Tuesdays 09:00). Manual run:
+`scripts/orchestrator.sh northbay [--force] [--dry-run]`. The runbook itself lives in the
+private repo, so changes to what this mode does go there, not here.
+
 ### `liveness` — Weekly liveness sweep + saved-list sync (orchestrator)
 
 Read `references/orchestrator-loop.md` first. Normally invoked by a systemd timer.
@@ -480,7 +553,12 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 1. Create `~/workspace/jobs/sources.json` if absent (template in `references/orchestrator-loop.md`).
 2. Run `~/workspace/agent-tools/skills/job-search/scripts/install-orchestrator.sh`, which
    installs and enables the systemd user timers. `--uninstall` reverses it.
-3. Verify with `systemctl --user list-timers 'job-search-*'`.
+3. Verify with `systemctl --user list-timers 'job-search-*'`. Expect `job-search-discover`
+   (06:00), `job-search-digest` (08:30), `job-search-liveness` (Sun 10:00), and
+   `job-search-northbay` (Tue 09:00). If a mode is missing from the list, it is not running,
+   no matter what the docs say.
+4. User timers only fire while a login session exists unless lingering is on. Check with
+   `loginctl show-user "$USER" --property=Linger`; enable with `loginctl enable-linger $USER`.
 4. Tell the user about `loginctl enable-linger $USER` if they want timers to fire while logged
    out, and that a sleeping machine runs missed jobs on wake (`Persistent=true`).
 
@@ -516,7 +594,7 @@ See `references/knowledge-graph.md` → "Lifecycle".
 ### `sync` — Pull both repos to current device
 
 ```bash
-cd ~/workspace/job-search && git pull --rebase
+cd ~/workspace/jobs && git pull --rebase
 cd ~/workspace/resume && git fetch --all --prune && git pull --rebase
 ```
 
@@ -526,7 +604,7 @@ Print tracker state after sync.
 
 Create a fresh job search directory from scratch.
 
-1. `mkdir -p ~/workspace/job-search && cd ~/workspace/job-search && git init`
+1. `mkdir -p ~/workspace/jobs && cd ~/workspace/jobs && git init`
 2. Create tracker with headers:
    ```bash
    echo "id,company,role,url,stage,resume_branch,role_branch,application_url,referral_contact,referral_status,date_found,date_applied,date_updated,notes,coh_cell,coh_derivative,coh_verdict,coh_date" > tracker.csv
@@ -559,7 +637,7 @@ Create a fresh job search directory from scratch.
    ```
 8. Print next steps:
    ```
-   Job search repo initialized at ~/workspace/job-search
+   Job search repo initialized at ~/workspace/jobs
 
    Next steps:
    1. /job-search setup     — configure browser automation
@@ -623,6 +701,10 @@ if it exists, move it back rather than creating a fresh folder.
 `applications/<id>/` first, then `applications/archived/<id>/`.
 
 ## CSV Read/Write
+
+Full column-by-column schema, allowed stage values, and the `coh_*` columns:
+`references/csv-schema.md`.
+
 
 **Always use Python for CSV operations** to handle quoting correctly:
 
@@ -688,27 +770,34 @@ runtime (flags / env / read from the private profile) instead.
    and risks the user's accounts.
 4. **LinkedIn safety is non-negotiable.** Read `references/linkedin-safety.md` before any LinkedIn browsing.
 5. **Never automate** connection requests, messages, or application submissions on LinkedIn.
-6. **Always read `resume/CONTEXT.md`** before modifying resume content.
-7. **Use `_publish`** after every resume edit, and commit the generated artifacts.
-8. **Always push both repos** at the end of a pipeline run.
-9. **Draft application responses** for any written questions. Anything the user sends verbatim
+6. **Always read `strategy/narrative.md` and `strategy/facts.md`** (in the private jobs repo) before modifying resume content. The resume repo is public and holds no factual-constraint file.
+7. **Every externally-facing artifact passes the External Output Gate** before it is rendered
+    or called ready: fact check, reconcile, `no-ai-slop` pass, `scripts/check_claims.sh`.
+    See `references/external-output-gate.md`. Claims are *selected* from `strategy/facts.md`,
+    never paraphrased fresh out of `strategy/narrative.md`.
+8. **A corrected fact is not fixed until it is fixed everywhere.** When any claim changes, add
+    the wrong version to `strategy/claim-guards.txt`, run `scripts/check_claims.sh --all`, and
+    fix every hit across both repos, including drafts, skeletons, and research notes.
+9. **Use `_publish`** after every resume edit, and commit the generated artifacts.
+10. **Always push both repos** at the end of a pipeline run.
+11. **Draft application responses** for any written questions. Anything the user sends verbatim
     (application answers, cover letters, outreach replies) must be copy-pasteable as-is: no `>`
     blockquote indentation, no hard-wrapped lines inside the draft. See Stage 4.
-10. **Never submit applications automatically.** Fill everything, then stop. User clicks Submit.
+12. **Never submit applications automatically.** Fill everything, then stop. User clicks Submit.
     This holds for the unattended orchestrator loop too: its authority ends at discovery,
     research, tracker state, and saved-list bookkeeping.
-11. **Active processes are hands-off.** No sub-command, timer, or agent changes the stage of a
+13. **Active processes are hands-off.** No sub-command, timer, or agent changes the stage of a
     row at `interviewing` or `offer`. Liveness, geography, and coherence verdicts write notes
     and columns on those rows and surface them; only the user moves them. Rows at `discovered`
     through `applied` may be auto-closed or withdrawn by the rules above.
-12. **Geographic filter.** Roles must be Remote (United States) or in the San Francisco Bay
+14. **Geographic filter.** Roles must be Remote (United States) or in the San Francisco Bay
     Area. Anything requiring residence in another country or time zone, or in-office in another
     US metro, is closed at discovery with a note, never researched. Read the location line of
     the actual posting, not the aggregator's.
-13. **No PII anywhere in this public skill** (SKILL.md, scripts, assets — the whole repo). All
+15. **No PII anywhere in this public skill** (SKILL.md, scripts, assets — the whole repo). All
     personal details live in the private job-search repo (`~/workspace/jobs/`, incl. `profile.md`)
     and are passed to scripts at runtime via flags or env vars. See the repo `AGENTS.md`.
-14. **Maintain the tracker artifact.** The private repo publishes a sortable/filterable view of
+16. **Maintain the tracker artifact.** The private repo publishes a sortable/filterable view of
     `tracker.csv` as a Claude artifact (a primary interface surface for the user). After any
     change to `tracker.csv` or to a `job-posting.md` location line, rebuild and republish it:
     `python3 artifact/build.py`, then publish `artifact/tracker-view.html` with the Artifact

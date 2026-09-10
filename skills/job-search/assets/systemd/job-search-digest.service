@@ -1,0 +1,10 @@
+[Unit]
+Description=Job search pipeline: daily morning digest (rebuild and republish the status artifact)
+
+# JOBS_DIR defaults to $HOME/workspace/jobs; override with an Environment= line here if needed.
+
+[Service]
+Type=oneshot
+ExecStart=%h/workspace/agent-tools/skills/job-search/scripts/orchestrator.sh digest
+# Reads the repo and republishes one artifact. Fast, but allow room for a slow publish.
+TimeoutStartSec=1800

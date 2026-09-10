@@ -48,7 +48,7 @@ Verify: `curl -s http://localhost:2480/api/v1/server -u root:playwithdata`
 Settings & Privacy → Data Privacy → Get a copy of your data. Request:
 - Connections, Messages, Positions, Education
 
-Extract CSVs to `~/workspace/job-search/data/linkedin/`:
+Extract CSVs to `~/workspace/jobs/data/linkedin/`:
 - `Connections.csv` — 1st-degree connections
 - `Messages.csv` — message history
 - `Positions.csv` — your own work history (for shared-employer bonus)
@@ -58,7 +58,7 @@ Extract CSVs to `~/workspace/job-search/data/linkedin/`:
 
 Run from your job-search repo root:
 ```bash
-cd ~/workspace/job-search
+cd ~/workspace/jobs
 python3 ~/workspace/agent-tools/skills/job-search/scripts/ingest_linkedin.py --me-name "Your Full Name"
 ```
 
@@ -126,7 +126,7 @@ docker-compose.yml and the `ARCADE_PASS` constant in both scripts (or set `ARCAD
 
 ## connections.md Template
 
-Save findings to `jobs/<id>/connections.md`:
+Save findings to `applications/<id>/connections.md`:
 
 ```markdown
 # Connections at <Company>
