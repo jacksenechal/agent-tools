@@ -25,8 +25,8 @@ the pipeline can usefully do alone on that row. Fast-track rows never stop.
 
 Any job-pipeline task. Beyond the phrases in the description, this also covers:
 "application status", "knowledge graph", "warmth score", "ingest linkedin", "saved jobs",
-"scan bookmarks", "still open", "orchestrator loop", "scout", "vet", "coherence read", and
-"find high-coherence companies".
+"scan bookmarks", "still open", "orchestrator loop", "scout", "vet", "coherence read",
+"find high-coherence companies", and "re-gate"/"re-check the letters".
 
 The orchestrator runs on timers rather than on request:
 
@@ -636,6 +636,29 @@ See `references/knowledge-graph.md` → "Lifecycle".
 3. If the new stage is `rejected`, `withdrawn`, or `closed`, archive the folder too; if it is a
    live stage and the folder sits under `applications/archived/`, move it back. See "Archiving".
 4. Commit and push: `git add -A && git commit -m "Update <id> stage to <stage>" && git push` (`-A` so an archive move is included)
+
+### `regate <id | --all-unsent>` — Re-run the gate over an existing letter
+
+Backfill for letters drafted before a gate or `facts.md` improvement. It runs the External
+Output Gate over the **existing** `cover-letter.md` and `application-responses.md` of an
+already-drafted, unsent application. It does NOT redraft from scratch or touch Stages 1-3, and
+it never runs on a row past `applied` (a sent letter is history).
+
+`<id>` gates one application. `--all-unsent` gates every application in a pre-`applied` stage
+whose letter has no `applications/<id>/fact-check.md` yet (i.e. never gated).
+
+Per application:
+1. Run the gate exactly as Stage 4 does: fact check (`sonnet` subagent, read-only, against the
+   current `strategy/facts.md` including its guardrails and the Kantata wire diagram) → reconcile
+   on the main thread → `no-ai-slop` Edit pass → `scripts/check_claims.sh <file>` must exit clean.
+2. Append the verdict table to `applications/<id>/fact-check.md` under a dated heading. Its
+   presence is what marks the letter gated, so `--all-unsent` skips it next time.
+3. If anything changed, regenerate the PDF over the existing filename (Stage 4 render step) and
+   commit. If nothing changed, say so and write the fact-check log anyway (it records that the
+   letter was checked and cleared).
+
+Use this after editing `facts.md`, the guards, or the gate itself, to bring already-drafted
+letters up to the current standard without redrafting them.
 
 ### `sync` — Pull both repos to current device
 
