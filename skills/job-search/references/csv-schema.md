@@ -24,6 +24,7 @@ File: `~/workspace/jobs/tracker.csv`
 | `coh_derivative` | int | no | Coherence derivative, -2 to +2 |
 | `coh_verdict` | enum | no | `Advance`, `Price`, `Pass`, `Unknown` |
 | `coh_date` | date | no | ISO date of the coherence read |
+| `track` | enum | no | `fast` or `deep`. How much attention this application gets, decided at `add` time and overridable by the user at any point. Empty means not yet routed. See `references/application-tracks.md` |
 
 ## Pipeline Stages
 

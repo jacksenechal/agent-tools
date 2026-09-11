@@ -16,6 +16,11 @@ workflow from LinkedIn job URL to ready-to-apply state.
 **Run the entire pipeline end-to-end without stopping for user confirmation.** The user
 will review artifacts after the run completes.
 
+Two exceptions, and only two: a CAPTCHA (see Important Rules), and a **deep-track** row, which
+stops after `brief.md` by design so the user's direction shapes the resume and letter rather
+than arriving after they are written. That is not a confirmation prompt; it is the end of what
+the pipeline can usefully do alone on that row. Fast-track rows never stop.
+
 ## When To Use This
 
 Any job-pipeline task. Beyond the phrases in the description, this also covers:
@@ -47,7 +52,7 @@ timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
   so **always read it as `git -C ~/workspace/resume show main:resume.md`**, never from the
   working tree, or you will treat a tailored variant as canonical.
 - **Canonical facts**: `~/workspace/jobs/strategy/facts.md` — atomic, sourced claims plus the
-  "do NOT claim" guardrails. Every externally-facing claim is selected from here.
+  "do NOT claim" guardrails. The reference for verifiable particulars, not a menu to draft from.
 - **Project narratives and framing constraints**: `~/workspace/jobs/strategy/narrative.md`
 - **Banned claim strings**: `~/workspace/jobs/strategy/claim-guards.txt`
 - **Personal website**: `~/workspace/jacksenechal.com/` (Jekyll, **public**:
@@ -56,6 +61,8 @@ timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
 - **LinkedIn safety rules**: See `references/linkedin-safety.md` — READ THIS before any LinkedIn browsing
 - **External output gate**: See `references/external-output-gate.md` — READ THIS before drafting
   any cover letter, application answer, or outreach message
+- **Application tracks**: See `references/application-tracks.md` — fast vs deep routing, what
+  each track runs, and the `brief.md` spec
 
 ## Browser Automation
 
@@ -138,6 +145,22 @@ deterministic `scripts/check_claims.sh` run. Facts settle before prose gets poli
 This is not optional and not a judgment call per artifact. Full protocol, corpus, verdict
 scheme, and propagation rule: `references/external-output-gate.md`.
 
+## Application Tracks
+
+Not every application deserves the same spend, and deciding that once at the front beats
+deciding it implicitly and repeatedly inside the work. Each row is routed **fast** or **deep**
+at `add` time, written to the tracker's `track` column, and the user can change it at any point.
+
+**Fast**: close to a known archetype, routine judgment calls. Runs unattended to
+`ready_to_apply`. **Deep**: the user's judgment is the actual product, so the pipeline prepares
+his thinking rather than substituting for it, and stops early enough that his direction still
+shapes the work. The difference is *who decides*, not how much research happens.
+
+When it is genuinely ambiguous, take fast. A fast application the user decides to invest in at
+review is cheap; a deep one he did not need cost hours before he ever saw it.
+
+Routing rules, the per-stage table, and the `brief.md` spec: `references/application-tracks.md`.
+
 ## Sub-Commands
 
 ### `add <linkedin-url>` — Process a new job
@@ -189,6 +212,11 @@ Walk through the full pipeline for a new job posting end-to-end.
    `coherence Pass`, stop. `Price` → continue, but carry the why-line into `job-posting.md`
    "Notes" so the loop questions and the seat shape are visible from the first artifact.
    `Advance` and `Unknown` → continue. A company vetted in the last 90 days is not re-vetted.
+5d. **Route the application.** Apply the routing rules in `references/application-tracks.md`
+   and write `fast` or `deep` to the row's `track` column. This decides how much of the rest of
+   Stage 1 runs, so do it here rather than discovering it later. On the fast track, skip step 6
+   (Glassdoor) and run step 7 as a single research pass rather than a parallel fan-out.
+
 6. Research company on Glassdoor via a **haiku subagent**:
    - Spawn an Agent (model: haiku) with the task: "Navigate to `https://www.glassdoor.com/Search/results.htm?keyword=<URL-encoded-company-name>`. Snapshot results, click through to the company's Reviews page, snapshot the overview. Scroll and snapshot to capture more highlights. CAPTCHA RULE: if any snapshot shows a CAPTCHA or security challenge, STOP, navigate to google.com, and return 'CAPTCHA_DETECTED'. Otherwise, return verbatim: overall rating, CEO approval %, recommend-to-friend %, pros/cons summary, and 2-3 notable review snippets. Do not summarize."
    - The subagent returns raw text; the main thread writes `glassdoor.md` and synthesizes takeaways.
@@ -233,7 +261,15 @@ Walk through the full pipeline for a new job posting end-to-end.
    thin, then synthesize into `applications/<id>/company-research.md` (sections per angle + a
    "Takeaways for Application" block). Prefer this over burning main-thread context on public
    web research.
-8. Update tracker: `company`, `role`, `application_url`, `stage=researched`
+8. Write `applications/<id>/brief.md` — the one-page decision object for the user (five lines
+   on the fast track). Template and section meanings in `references/application-tracks.md`.
+   Research documents end in advice; the brief ends in a decision, which is what makes it
+   readable in a minute instead of twenty.
+9. Update tracker: `company`, `role`, `application_url`, `stage=researched`
+
+**Deep track stops here** and surfaces `brief.md` to the user. His direction shapes the resume
+and the letter, so getting it before they are written is the point. Fast track continues
+through Stage 4 unattended.
 
 **Stage 2: Tailor Resume**
 
@@ -308,7 +344,7 @@ application answers, cover letters, outreach messages, and recruiter replies. Tw
 For any written questions or essays identified in Stage 3:
 
 1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, `applications/<id>/company-research.md`, the tailored `resume.md`, `~/workspace/jobs/strategy/facts.md`, and `~/workspace/jobs/strategy/narrative.md`
-2. Draft responses: specific to the user's experience, tailored to role and company, concise, and honest per the guardrails in `facts.md`. Build every claim by selecting a line from `facts.md`, not by paraphrasing `narrative.md` into a fresh assertion.
+2. Draft responses: specific to the user's experience, tailored to role and company, concise, and honest per the guardrails in `facts.md`. Write them properly rather than assembling them from the fact sheet; look up particulars (numbers, titles, dates, scope) there instead of recalling them, and let the argument and the voice be your own.
 3. Run the gate on the draft:
    a. **Fact check** — spawn a `sonnet` subagent, read-only, per `references/external-output-gate.md`.
       It returns a claim table with verdicts and quoted evidence. It never rewrites.
@@ -320,6 +356,16 @@ For any written questions or essays identified in Stage 3:
    d. **Mechanical check** — `scripts/check_claims.sh <file>`. Must exit clean.
    e. Append the fact-check verdict table to `applications/<id>/fact-check.md`.
 4. Save to `applications/<id>/application-responses.md` with each question clearly labeled. If no written questions, note that.
+
+**A shape that has worked, offered and not imposed.** One paragraph states the challenge the
+role actually faces, and each body paragraph then proves one claim made in that opening. It
+gives a letter an argument instead of a list, and it makes the closing easy because the case
+has already been made.
+
+It is a starting point, not a rule. Plenty of good letters open with a story, an admission, a
+question, or a single blunt sentence, and a letter that needs a different structure should have
+one. Do not force a draft into this shape, do not check a finished draft against it, and never
+flatten a distinctive opening to comply with it. If the shape is not helping, abandon it.
 
 **Cover letters**: when a posting wants a cover letter (or it strengthens the app), draft it to
 `applications/<id>/cover-letter.md`, run the full gate on it (fact check, reconcile, slop pass,
@@ -762,7 +808,9 @@ runtime (flags / env / read from the private profile) instead.
 ## Important Rules
 
 1. **Run end-to-end without pausing.** The user reviews everything after the pipeline completes.
-2. **CAPTCHA = STOP.** If any `browser_snapshot` or `browser_screenshot` reveals a CAPTCHA, security challenge, "unusual activity" warning, or bot-detection interstitial on ANY site (LinkedIn, Glassdoor, Greenhouse, Lever, Workday, etc.): immediately stop all browser automation, navigate to `google.com`, and ask the user to resolve it via noVNC (http://localhost:6080/vnc.html). Wait for confirmation before resuming. Never attempt to solve or bypass a captcha. This is the ONE exception to "run without pausing."
+    A deep-track row is the one designed stopping point: it ends at `brief.md` and waits for his
+    direction. Never ask for confirmation anywhere else.
+2. **CAPTCHA = STOP.** If any `browser_snapshot` or `browser_screenshot` reveals a CAPTCHA, security challenge, "unusual activity" warning, or bot-detection interstitial on ANY site (LinkedIn, Glassdoor, Greenhouse, Lever, Workday, etc.): immediately stop all browser automation, navigate to `google.com`, and ask the user to resolve it via noVNC (http://localhost:6080/vnc.html). Wait for confirmation before resuming. Never attempt to solve or bypass a captcha. This is the only *unplanned* stop; the deep-track handoff in Rule 1 is the only planned one.
 3. **Route research correctly (see "Research Routing").** All research runs as Claude
    subagents via the Agent tool, spawned in parallel. LinkedIn, Glassdoor, Indeed, and
    application forms additionally need the authenticated `playwright-golden` session.
@@ -773,8 +821,8 @@ runtime (flags / env / read from the private profile) instead.
 6. **Always read `strategy/narrative.md` and `strategy/facts.md`** (in the private jobs repo) before modifying resume content. The resume repo is public and holds no factual-constraint file.
 7. **Every externally-facing artifact passes the External Output Gate** before it is rendered
     or called ready: fact check, reconcile, `no-ai-slop` pass, `scripts/check_claims.sh`.
-    See `references/external-output-gate.md`. Claims are *selected* from `strategy/facts.md`,
-    never paraphrased fresh out of `strategy/narrative.md`.
+    See `references/external-output-gate.md`. `strategy/facts.md` settles particulars
+    (numbers, titles, dates, scope); it never dictates the argument or the voice.
 8. **A corrected fact is not fixed until it is fixed everywhere.** When any claim changes, add
     the wrong version to `strategy/claim-guards.txt`, run `scripts/check_claims.sh --all`, and
     fix every hit across both repos, including drafts, skeletons, and research notes.

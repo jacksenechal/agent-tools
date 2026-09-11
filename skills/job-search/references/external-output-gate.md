@@ -17,8 +17,9 @@ notes, strategy docs) do not go through the gate.
 Facts settle first, prose second, machine check last.
 
 1. **Draft** on the main thread (Opus). Judgment work: what to claim, which narrative
-   leads, how a weak spot is handled honestly. Build claims by selecting lines from
-   `facts.md`, not by paraphrasing `narrative.md` into fresh assertions.
+   leads, how a weak spot is handled honestly. Write it properly; do not assemble it out of
+   `facts.md`. Look up the *particulars* there (numbers, titles, dates, scope) rather than
+   recalling them, and let the argument be your own.
 2. **Fact check** — `sonnet` subagent, read-only, protocol below. Runs on the *raw* draft.
 3. **Reconcile** on the main thread. Apply the fixes yourself.
 4. **Slop pass** — `sonnet` subagent running `no-ai-slop` in Edit mode.
@@ -126,22 +127,27 @@ from a list of claims already cleared.
 
 ## Where errors actually come from, and what each layer does
 
-The failure is re-derivation. Every draft that rebuilds Jack's story out of 400 lines of
-narrative gets a slightly different story, and the drift is invisible because each version
-is individually plausible. Nobody is misremembering; the corpus is just too big to select
-from consistently.
+The failure is re-derivation of *particulars*. A draft that rebuilds a number, a title, a
+date or a scope statement from memory over 400 lines of narrative gets it slightly wrong,
+and the drift is invisible because each version is individually plausible.
 
-So the layers are not three tries at the same job:
+Note what that does and does not cover. It is a claim about facts, not about arguments.
 
-- **`facts.md` prevents.** It converts drafting from recall over a corpus into selection
-  from a fixed, per-line-sourced list. This is the load-bearing one. If you find yourself
-  paraphrasing `narrative.md` into a new claim, stop and go find the line in `facts.md`.
-  If it isn't there, the claim isn't ready.
-- **The fact-check agent catches what's novel.** Its question is checkable and narrow:
-  does every claim trace to a line in the corpus? Not "is this accurate", which is a vibe.
+- **`facts.md` settles particulars.** Numbers, titles, dates, employers, scope, and the
+  "do NOT claim" guardrails. Look them up rather than recalling them. It is a reference,
+  **not a menu to draft from**: a letter assembled by picking lines off a fact sheet reads
+  like it was assembled by picking lines off a fact sheet. What to argue, which story
+  leads, what matters to this employer, and how the whole thing sounds are the writer's,
+  and nothing here constrains them.
+- **The fact-check agent catches what's novel.** Constrain validation, not generation.
+  That ordering is the whole point: a drafter writing under a sourcing rule produces flat,
+  safe prose, while a drafter writing freely against a real check produces prose with a
+  voice and accurate facts. Its question is narrow and checkable: does each particular
+  trace to the corpus? Not "is this good", and not "is this accurate" in the abstract.
 - **`claim-guards.txt` stops recurrence.** A regression test, nothing more. It can only
   catch a claim that has already been wrong once, so it can never be the mechanism for
-  factuality. Keep it short. Add a line only when a specific claim actually comes back.
+  factuality. Keep it short. Guard the wrong claim, never a bare general term.
 
-When `facts.md` is missing something a draft needs, the fix is to add the fact to
-`facts.md` with its source, not to let the draft assert it. Growing the list is the point.
+When `facts.md` is missing a particular a draft needs, add it there with its source rather
+than letting the draft assert it unchecked. Growing the reference is the point. Growing it
+into a style guide is not.
