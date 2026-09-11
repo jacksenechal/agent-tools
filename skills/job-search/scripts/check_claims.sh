@@ -26,11 +26,12 @@ collect_all() {
   [[ -f "$RESUME_DIR/resume.md" ]] && echo "$RESUME_DIR/resume.md"
 }
 
-# Captured third-party content: scraped postings and research about a company. Not Jack's
-# claims, so guards about Jack do not apply. Skipped entirely.
+# Captured or audit content: scraped postings/research about a company, and per-application
+# fact-check logs that quote the wrong claims they caught. Not Jack's outgoing claims, so guards
+# about Jack do not apply. Skipped entirely.
 is_source_capture() {
   case "$1" in
-    *job-posting.md|*glassdoor.md|*-research.md|*application-form.md) return 0 ;;
+    *job-posting.md|*glassdoor.md|*-research.md|*application-form.md|*fact-check.md) return 0 ;;
     *) return 1 ;;
   esac
 }
