@@ -24,40 +24,59 @@ The mistake is treating Deep as "Fast plus more research". The difference is who
 
 Decided at `add` time, written to the `track` column, changeable by Jack at any point.
 
-**The question is about the application work, not the company.** Coherence verdicts measure a
-property of the organization and mostly do not answer it. They intersect this decision at
-exactly one point, `Price`. Do not route on the verdict alone.
+This was calibrated: nine completed applications were scored blind on the dimensions below,
+then checked against what their revisions actually fought. Two findings reshaped the rule.
 
-Take **Deep** if any of these hold:
+**Coherence verdict does not route the track. At all.** They are orthogonal axes. Coherence
+answers "do I want to work here, and at what price"; the track answers "how much of my own
+judgment does applying well require". A `Price` company can have a trivial application and an
+`Advance` company a brutal one. Route on the dimensions, never on the verdict. (An earlier
+version of this file routed `Price` to deep and `Advance` to fast; the calibration falsified
+both.)
 
-- `coh_verdict` is `Price`. The instrument's own words are "price it or take it knowingly", and
-  taking a known cost knowingly is Jack's call by definition. This is the one verdict that
-  routes on its own.
-- no close `role/` archetype exists, so the resume needs real rethinking rather than tailoring
-- public sector, hospital, or any process with its own rules (supplemental questions,
-  panel scoring, a named deadline, a recruiter intermediary)
-- the posting asks essay questions that need a position rather than a description
-- the company matters to Jack beyond this specific role
+**Two dimensions do the routing, and they are the two only Jack can supply.** Any **high** on
+either sends it deep:
 
-Otherwise take **Fast**: a close archetype, a standard ATS (Greenhouse, Lever, Ashby), no
-essays beyond the usual, nothing above triggered.
+- **Position formation** — must Jack hold and state a genuine specific view (on the company's
+  mission, technical philosophy, published work), not describe experience? This was the dominant
+  cost in maintainx and Anthropic; it is irreducibly his.
+- **Pre-application homework** — does writing credibly require Jack to read and synthesize their
+  material first (published research, a product deep-dive, a regulatory landscape)? High in seven
+  of the nine. Detectable at add time from the posting and the size of `company-research.md`, so
+  the pipeline can flag "this needs Jack's reading" before a letter ever stalls.
 
-### Two verdicts that look like routing signals and are not
+**Two more are real but mostly mechanical.** They push toward deep but rarely decide it alone:
 
-**`Unknown` does not mean Deep.** It means "employee side under n=30 and fewer than three other
-inputs": a coverage gap, not a judgment gap. The instrument's remedy is the seed read, which a
-subagent runs. Route an `Unknown` row by running the seed read first, then route on what comes
-back. Only an `Unknown` that survives the seed read is a Jack question, and then it is usually
-a `Price` in disguise. Sending raw `Unknown` rows to Deep spends his attention on something
-research closes.
+- **Archetype distance** — no close `role/` archetype, so the resume needs re-framing not
+  tailoring (Clover: food/SAP; Skywalker: pure IC against leadership archetypes).
+- **Process complexity** — gated ATS, guessed-blind screening questions, panel scoring, a named
+  deadline, a recruiter intermediary.
 
-**`Advance` does not mean Fast.** It means the organization is sound, which says nothing about
-whether the application is hard to write. A clean company with a role far from Jack's
-archetypes, or with essays that need a position he holds, is still Deep. `Advance` clears the
-company; the remaining criteria decide the track.
+**Novelty is a batching signal, not a router.** It was low almost everywhere, because Jack has a
+strong template bank. It tells you what to reuse, not how much judgment a row needs. Keep it out
+of the routing decision; use it in Batching below.
 
-When it is genuinely ambiguous, take Fast. A Fast application Jack decides to invest in on
-review is cheap; a Deep one he did not need cost hours before he ever saw it.
+So: **deep if position or homework is high, or if archetype and process are both elevated.**
+Otherwise fast. When genuinely ambiguous, take fast: a fast application Jack invests in at review
+is cheap; a deep one he did not need cost hours before he saw it.
+
+### Do not use revision count as a cost signal
+
+The calibration killed it. Revision count is not weak, it is **inverted**: Skywalker and Early
+Warning are high-cost applications (high homework, high position, resume re-framing) that have
+exactly one revision each, because the expensive judgment landed in the first draft or upstream
+in research and never showed as churn. Meanwhile Anthropic's 13 revisions were mostly one-page
+compression and argument tightening, much of it agent-work. Cost is front-loaded into the first
+pass; the diff cannot see it. Score the dimensions from the posting and research, never from how
+many times a letter was touched.
+
+### Factual churn is not a track cost
+
+Five of the nine letters spent their largest revision bucket on one thing: Jack's own Kantata
+story getting cross-wired (the M-Bridge vs DevOps migrations). That is not a property of any
+target company and does not belong in the track rating. It is a `facts.md` problem, now fixed by
+the "two teams, four migrations" wire diagram there. If a row's cost looks high only because of
+own-narrative churn, that is a signal to fix `facts.md`, not to route deep.
 
 ## What each track runs
 
