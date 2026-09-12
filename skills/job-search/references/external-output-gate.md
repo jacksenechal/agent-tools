@@ -19,7 +19,10 @@ Facts settle first, prose second, machine check last.
 1. **Draft** on the main thread (Opus). Judgment work: what to claim, which narrative
    leads, how a weak spot is handled honestly. Write it properly; do not assemble it out of
    `facts.md`. Look up the *particulars* there (numbers, titles, dates, scope) rather than
-   recalling them, and let the argument be your own.
+   recalling them, and let the argument be your own. **Draft in Jack's voice from the first
+   line** (`strategy/voice-profile.md`), not in generic cover-letter register to be fixed
+   later. The slop pass is a backstop, not the place voice is supposed to arrive; a draft that
+   starts in his voice needs far less rescue.
 2. **Fact check** — `sonnet` subagent, read-only, protocol below. Runs on the *raw* draft.
 3. **Reconcile** on the main thread. Apply the fixes yourself.
 4. **Slop pass** — `sonnet` subagent running `no-ai-slop` in Edit mode.
@@ -56,8 +59,12 @@ Spawn a `sonnet` agent with the `no-ai-slop` skill, Edit mode. Hand it:
 
 - the draft verbatim,
 - audience and format ("a hiring manager at <company>, one-page cover letter PDF"),
-- the voice note: Jack writes plainly and directly. No em dashes or en dashes, ever, in
-  outward-facing text. No throat-clearing, no binary contrasts, no colon reveals.
+- **`~/workspace/jobs/strategy/voice-profile.md` as the voice target.** This is the positive
+  reference: not just "remove AI patterns" but "sound like *this*". The slop skill preserves
+  the writer's voice; the profile makes that concrete. Tell it to match the register the
+  profile assigns to this artifact (cover letters: warm-professional with a touch of
+  conviction) and to use Jack's real moves (the honest-limits move, concrete grounding, genuine
+  hedges kept) while cutting the tells the profile names. No em dashes or en dashes, ever.
 - an explicit instruction: **do not add, sharpen, or quantify any claim.** It may cut and
   it may rephrase, but a number, title, date, or scope statement that was not in the
   draft must not appear in the edit.
@@ -78,6 +85,7 @@ own guesses into the text.
 | 1 | `~/workspace/resume/resume.md` on `main` | Employment history, titles, dates. Wins all conflicts. |
 | 1 | `~/workspace/jobs/strategy/facts.md` | Canonical atomic facts and negative guardrails. |
 | 1 | `~/workspace/jobs/strategy/narrative.md` | Project stories, values, framing constraints. |
+| voice | `~/workspace/jobs/strategy/voice-profile.md` | How Jack writes. The slop pass targets this; the fact check ignores it (voice is not a fact). |
 | 2 | `~/workspace/jacksenechal.com/` | Jack's public site. Public, so citable, and claims must not contradict it. |
 | 2 | `~/workspace/jobs/profile.md` | Logistics: location, work authorization, links. |
 | 3 | `applications/<id>/*.md` for this job | Claims about the *company*. Only counts if it carries a `SOURCES:` URL. |

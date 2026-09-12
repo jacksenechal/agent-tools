@@ -39,7 +39,7 @@ is_source_capture() {
 # Source-of-truth docs state the banned strings on purpose, in order to ban them.
 is_guard_doc() {
   case "$1" in
-    */strategy/facts.md|*/strategy/narrative.md|*/strategy/claim-guards.txt) return 0 ;;
+    */strategy/facts.md|*/strategy/narrative.md|*/strategy/claim-guards.txt|*/strategy/voice-profile.md) return 0 ;;
     *) return 1 ;;
   esac
 }

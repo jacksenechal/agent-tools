@@ -54,6 +54,9 @@ timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
 - **Canonical facts**: `~/workspace/jobs/strategy/facts.md` — atomic, sourced claims plus the
   "do NOT claim" guardrails. The reference for verifiable particulars, not a menu to draft from.
 - **Project narratives and framing constraints**: `~/workspace/jobs/strategy/narrative.md`
+- **Voice profile**: `~/workspace/jobs/strategy/voice-profile.md` — how Jack actually writes.
+  Draft externally-facing text from this; the slop pass checks against it. Governs *how it
+  sounds*, as facts.md governs *what is true*.
 - **Banned claim strings**: `~/workspace/jobs/strategy/claim-guards.txt`
 - **Personal website**: `~/workspace/jacksenechal.com/` (Jekyll, **public**:
   github.com/jacksenechal/jacksenechal.com). A named source for the fact check: anything here
@@ -326,6 +329,12 @@ to claim, which narrative to lead with, and how to handle a weak spot honestly i
 work, and a fluent wrong answer here is worse than no draft. Sonnet may be handed a settled
 angle to polish, but not the decision of what the angle is.
 
+**Draft in Jack's voice from the first line** (`~/workspace/jobs/strategy/voice-profile.md`),
+not in generic cover-letter register to be rescued at the slop pass. Read the profile before
+drafting: the honest-limits move, concrete grounding over adjectives, genuine hedges kept, and
+the register it assigns to the artifact (cover letters: warm-professional). A draft that starts
+in his voice needs far less fixing and reads as his.
+
 **Every artifact produced in this stage passes the External Output Gate**
 (`references/external-output-gate.md`) before it is rendered or presented: fact check on the
 raw draft, reconcile, `no-ai-slop` pass, then `scripts/check_claims.sh`. Do not render a PDF
@@ -351,8 +360,9 @@ For any written questions or essays identified in Stage 3:
    b. **Reconcile** on the main thread. Apply every blocking fix yourself. Spot-check any
       quote the checker attributes to a source file; a checker that paraphrases is wrong.
    c. **Slop pass** — spawn a `sonnet` subagent running the `no-ai-slop` skill in Edit mode,
-      with the instruction that it may cut and rephrase but must not add, sharpen, or
-      quantify any claim.
+      handing it `~/workspace/jobs/strategy/voice-profile.md` as the voice target (sound like
+      *this*, not just "less AI"), with the instruction that it may cut and rephrase but must
+      not add, sharpen, or quantify any claim.
    d. **Mechanical check** — `scripts/check_claims.sh <file>`. Must exit clean.
    e. Append the fact-check verdict table to `applications/<id>/fact-check.md`.
 4. Save to `applications/<id>/application-responses.md` with each question clearly labeled. If no written questions, note that.
