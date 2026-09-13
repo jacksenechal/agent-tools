@@ -1,19 +1,17 @@
 # Orchestrator Loop
 
 A long-running background loop that keeps the pipeline fed and current without the user
-driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), the **daily morning
-digest** (`digest`, 08:30), **weekly liveness + sync** (`liveness`, Sundays 10:00), and a
-**weekly North Bay re-scout** (`northbay`, Tuesdays 09:00, which runs
-`~/workspace/jobs/strategy/north-bay-rescout.md` end to end).
+driving it. Three scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
+sync** (`liveness`, Sundays 10:00), and a **weekly North Bay re-scout** (`northbay`, Tuesdays
+09:00, which runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end).
 
-Discovery runs early and the digest at 08:30 so the morning report covers that morning's finds
-and is waiting by 09:00. Discovery's jitter is deliberately small (15 min) for the same reason;
-a 90 minute jitter would let it finish after the digest had already run.
+Discovery's jitter is deliberately small (15 min): it rebuilds and republishes the tracker
+artifact at the end of every run, and a small jitter keeps that refreshed page ready early in
+the morning.
 
-All four are modes of `scripts/orchestrator.sh <discover|liveness|northbay|digest>`, which is
-also how to run one by hand. `digest` is the only mode that needs no browser, so it skips the
-golden-session check. Installed timers are the ground truth for what is actually running:
-`systemctl --user list-timers 'job-search-*'`.
+All three are modes of `scripts/orchestrator.sh <discover|liveness|northbay>`, which is
+also how to run one by hand. Installed timers are the ground truth for what is actually
+running: `systemctl --user list-timers 'job-search-*'`.
 
 ## Why systemd, not CronCreate or /loop
 
@@ -86,7 +84,11 @@ Runs once a day at a randomized time (see Scheduling).
      fit judgment never goes to a cheap subagent.
    - Advance to `stage=researched`.
 5. **Commit and push** the jobs repo.
-6. **Notify** with a one-screen summary: what was added, the fit read on each, and anything
+6. **Rebuild and republish the tracker artifact** (`python3 artifact/build.py`, then publish
+   `artifact/tracker-view.html` to the pinned URL in `artifact/README.md`), every run, even
+   when zero new jobs were found, since the page's day-relative sections are derived from repo
+   state that changes daily regardless of new finds.
+7. **Notify** with a one-screen summary: what was added, the fit read on each, and anything
    that looks like an obvious misfit worth pruning.
 
 **Budget guard**: if a single run finds more than 8 new jobs, research the 8 with the

@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily timer for job search discovery (early, so the 08:30 digest reports on it)
+Description=Daily timer for job search discovery (small jitter so the refreshed tracker page is ready early)
 
 [Timer]
 OnCalendar=*-*-* 06:00:00

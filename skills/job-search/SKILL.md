@@ -33,12 +33,11 @@ The orchestrator runs on timers rather than on request:
 | Mode | Schedule | What it does |
 |---|---|---|
 | `discover` | daily 06:00 (+15m jitter) | scan saved-job lists, auto-add, research |
-| `digest` | daily 08:30 (+5m jitter) | rebuild and republish the morning status artifact |
 | `liveness` | Sundays 10:00 | are pre-application postings still open, sync saved lists |
 | `northbay` | Tuesdays 09:00 | run `strategy/north-bay-rescout.md` end to end |
 
-`discover` runs early and `digest` at 08:30 so the morning report covers *this* morning's
-finds and is waiting by 09:00. See those sub-commands below, and `watch setup` to install the
+`discover` republishes the tracker artifact at the end of every run, so the morning view is
+current by roughly 06:30. See those sub-commands below, and `watch setup` to install the
 timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
 
 ## Project Locations
@@ -493,7 +492,12 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 4. If more than 8 new jobs appear in one run, research the 8 with the strongest surface fit,
    leave the rest at `discovered`, and **say so explicitly** in the summary. Never silently cap.
 5. Commit and push the jobs repo. Append a run line to `orchestrator.log`.
-6. Print a one-screen summary: jobs added, fit read on each, obvious misfits worth pruning.
+6. Rebuild and republish the tracker artifact: `python3 artifact/build.py`, then publish
+   `artifact/tracker-view.html` with the Artifact tool to the pinned URL in `artifact/README.md`.
+   Do this every run, even when zero new jobs were found, because the page's day-relative
+   sections (needs you today, new since yesterday, aging, warnings) are derived from repo state
+   that changes daily regardless of new finds.
+7. Print a one-screen summary: jobs added, fit read on each, obvious misfits worth pruning.
 
 ### `scout [--minutes N] [--max M]` — Coherence-driven discovery
 
@@ -554,22 +558,6 @@ One command: `scout` → `vet` on every new company → `add` (Stages 1-6) for e
 verdict is `Advance` and whose posting is live. Stops before any submission, as always. See
 `references/coherence-pipeline.md` for the runbook and the expected shape of a run.
 
-### `digest` — Daily morning status artifact (orchestrator)
-
-Rebuilds and republishes the one-page status view Jack reads over coffee. Needs no browser.
-
-1. `cd ~/workspace/jobs && python3 artifact/digest.py` — regenerates `artifact/digest.html`
-   entirely from repo data (`tracker.csv`, `git log`, `orchestrator.log`, `check_claims.sh`).
-   Nothing in it is hardcoded, so it cannot go stale the way a written-down snapshot does.
-2. Publish `artifact/digest.html` with the Artifact tool, passing the pinned digest URL from
-   `artifact/README.md` as `url`. **Never create a new artifact**; the whole point is that the
-   same link is good every morning.
-3. Do not commit `artifact/digest.html`. It is regenerated every morning and gitignored;
-   `digest.py` and its template are the versioned artifacts.
-
-Section order is deliberate: what needs Jack today, then state of play, then what changed,
-then what is aging, then warnings. Action first, noise last.
-
 ### `northbay` — Weekly North Bay re-scout (orchestrator)
 
 Runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end. Installed as
@@ -610,9 +598,8 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 2. Run `~/workspace/agent-tools/skills/job-search/scripts/install-orchestrator.sh`, which
    installs and enables the systemd user timers. `--uninstall` reverses it.
 3. Verify with `systemctl --user list-timers 'job-search-*'`. Expect `job-search-discover`
-   (06:00), `job-search-digest` (08:30), `job-search-liveness` (Sun 10:00), and
-   `job-search-northbay` (Tue 09:00). If a mode is missing from the list, it is not running,
-   no matter what the docs say.
+   (06:00), `job-search-liveness` (Sun 10:00), and `job-search-northbay` (Tue 09:00). If a mode
+   is missing from the list, it is not running, no matter what the docs say.
 4. User timers only fire while a login session exists unless lingering is on. Check with
    `loginctl show-user "$USER" --property=Linger`; enable with `loginctl enable-linger $USER`.
 4. Tell the user about `loginctl enable-linger $USER` if they want timers to fire while logged
@@ -879,8 +866,11 @@ runtime (flags / env / read from the private profile) instead.
     personal details live in the private job-search repo (`~/workspace/jobs/`, incl. `profile.md`)
     and are passed to scripts at runtime via flags or env vars. See the repo `AGENTS.md`.
 16. **Maintain the tracker artifact.** The private repo publishes a sortable/filterable view of
-    `tracker.csv` as a Claude artifact (a primary interface surface for the user). After any
-    change to `tracker.csv` or to a `job-posting.md` location line, rebuild and republish it:
-    `python3 artifact/build.py`, then publish `artifact/tracker-view.html` with the Artifact
-    tool passing the pinned URL from the private repo's `artifact/README.md` as `url` (never
-    create a new artifact). Skip only if the private repo has no `artifact/` directory.
+    `tracker.csv` as a Claude artifact (a primary interface surface for the user). The page also
+    carries daily derived status sections (needs you today, what changed, aging, warnings), so
+    it should be republished after any run, not only after a data edit. After any change to
+    `tracker.csv` or to a `job-posting.md` location line, and at the end of every `discover`
+    run, rebuild and republish it: `python3 artifact/build.py`, then publish
+    `artifact/tracker-view.html` with the Artifact tool passing the pinned URL from the private
+    repo's `artifact/README.md` as `url` (never create a new artifact). Skip only if the private
+    repo has no `artifact/` directory.
