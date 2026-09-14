@@ -287,6 +287,19 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
 1. Find the closest `role/*` archetype without checking anything out:
    `git -C ~/workspace/resume branch -r --list 'origin/role/*'` (or `git -C ~/workspace/resume show-ref --heads`).
    Pick the nearest; do not ask the user. If none fits, use `main`.
+1b. **Refresh the archetype if it is stale (lazy sync).** Archetypes drift behind
+   `main` as the canonical résumé gains fixed facts and convention changes; a stale one
+   tailors from wrong facts. Check: `git -C ~/workspace/resume rev-list --count role/<name>..main`.
+   - `0` → current, use as-is.
+   - behind by a little → run `scripts/sync_archetypes.sh` (merges `main` into the archetypes,
+     auto-publishes the clean ones, reports any that conflict). If it syncs `role/<name>` clean, use it.
+   - behind and it conflicts (reported by that script, or a heavily-diverged archetype) → the
+     archetype needs a **content refresh**, not a merge. Re-derive `resume.md` on the `role/<name>`
+     branch from current `main:resume.md` plus that role's positioning (drop company/sector
+     specifics, apply all conventions and current `facts.md`), `./_publish`, commit and push the
+     branch. Then copy from the refreshed archetype. If a full re-derivation is too large to do
+     inline on the fast track, tailor this one application from `main:resume.md` instead and leave
+     a note that `role/<name>` needs a refresh, so the next use (or an attended pass) does it.
 2. Copy that archetype into the application folder as the tailoring base:
    ```bash
    git -C ~/workspace/resume show role/<name>:resume.md \
@@ -636,6 +649,37 @@ Per application:
 
 Use this after editing `facts.md`, the guards, or the gate itself, to bring already-drafted
 letters up to the current standard without redrafting them.
+
+### `sync-archetypes` — Merge main into the résumé role archetypes
+
+Keeps the resume repo's `role/*` archetypes current with `main` so per-job tailoring
+starts from correct facts and conventions. Archetypes are refreshed **lazily** (each gets
+brought current the next time its role is tailored, Stage 2 step 1b); this command is the
+on-demand hygiene pass that does the mechanical merges in one shot.
+
+```bash
+~/workspace/agent-tools/skills/job-search/scripts/sync_archetypes.sh [--dry-run] [--no-push]
+```
+
+For each `role/*` branch it merges `main` in. Generated artifacts (`index.html`,
+`resume.pdf`) diverge on every branch and always conflict, so those are resolved by
+regenerating (`./_publish`) from the merged source, not treated as a conflict. Outcome per
+archetype:
+- **up to date** — nothing to do.
+- **synced clean** — source merged cleanly; artifacts regenerated, committed, pushed.
+- **needs refresh (conflicted)** — `resume.md` (or another source file) conflicts. The merge
+  is aborted (nothing committed) and the archetype is reported. A conflict means it has
+  drifted too far for a merge and needs a **content refresh** (re-derive `resume.md` from
+  current `main` + the role's positioning, per Stage 2 step 1b), which is judgment work, not
+  a merge. It is also refreshed automatically the next time that role is tailored.
+
+`--dry-run` reports what each archetype would do (behind-count + predicted clean/conflict)
+and changes nothing. `--no-push` commits locally without pushing. Requires a clean resume
+working tree; it restores the starting branch on exit. Env: `RESUME_REPO_PATH`
+(default `~/workspace/resume`).
+
+Note: heavily-diverged archetypes (e.g. months behind, independently rewritten) will all
+report as conflicts — that is expected, and the fix is a refresh, not a forced merge.
 
 ### `sync` — Pull both repos to current device
 
