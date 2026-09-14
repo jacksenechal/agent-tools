@@ -66,6 +66,10 @@ as a volume). Set it before every docker compose invocation:
 export RESUME_REPO_PATH=~/workspace/resume
 ```
 
+The jobs repo is also mounted (for per-job tailored résumé uploads at
+`applications/<id>/resume.pdf`); it defaults to `~/workspace/jobs`, so `JOBS_REPO_PATH` only
+needs setting if that repo lives elsewhere.
+
 ```bash
 # Initialize submodule (no-op if already present)
 cd ~/workspace/agent-tools
@@ -290,12 +294,15 @@ Once set up, use `mcp__playwright__` tools in any skill or task:
 
 ### File uploads
 
-Use `browser_file_upload` with the container-internal path. The resume repo is mounted at
-`/home/pwuser/resume/` (read-only), so for resume uploads:
+Use `browser_file_upload` with the container-internal path. Two repos are mounted read-only:
 
-```
-/home/pwuser/resume/resume.pdf
-```
+- **Per-job tailored résumé** (the usual upload): the jobs repo is at `/home/pwuser/jobs/`, so
+  upload `/home/pwuser/jobs/applications/<id>/resume.pdf`.
+- **Canonical résumé** (untailored): the resume repo is at `/home/pwuser/resume/`, so
+  `/home/pwuser/resume/resume.pdf`.
+
+(The jobs-repo mount defaults to `~/workspace/jobs`; override with `JOBS_REPO_PATH`. Recreate the
+container after adding the mount for it to take effect.)
 
 ### CAPTCHA / Security Challenge Detection
 

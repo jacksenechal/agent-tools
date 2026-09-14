@@ -13,8 +13,11 @@ services:
       - "127.0.0.1:3080:3080"   # MCP SSE endpoint (isolated sessions)
       - "127.0.0.1:3081:3081"   # MCP SSE endpoint (golden session)
     volumes:
-      # Resume repo — for programmatic file uploads (resume.pdf)
+      # Resume repo — canonical résumé, for uploads of the untailored resume.pdf
       - ${RESUME_REPO_PATH}:/home/pwuser/resume:ro
+      # Jobs repo — per-job tailored résumés at applications/<id>/resume.pdf (the usual upload).
+      # Defaulted so it is not a new required var; override JOBS_REPO_PATH if the repo moves.
+      - ${JOBS_REPO_PATH:-${HOME}/workspace/jobs}:/home/pwuser/jobs:ro
       # Workaround: Claude Code sends MCP roots as host paths → EACCES in container.
       # Custom start-mcp.sh adds --output-dir to override.
       - ./start-mcp.sh:/usr/local/bin/start-mcp.sh:ro
