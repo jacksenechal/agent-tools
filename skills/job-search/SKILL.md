@@ -46,10 +46,13 @@ timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
 - **Tracker**: `~/workspace/jobs/tracker.csv`
 - **Job research**: `~/workspace/jobs/applications/<id>/`
 - **Archived job research** (dead tracker rows): `~/workspace/jobs/applications/archived/<id>/`
-- **Resume repo**: `~/workspace/resume/` (separate git repo, **public**). Source of truth is
-  `resume.md` on `main`. The working tree is often checked out on a `job/*` tailoring branch,
-  so **always read it as `git -C ~/workspace/resume show main:resume.md`**, never from the
-  working tree, or you will treat a tailored variant as canonical.
+- **Resume repo**: `~/workspace/resume/` (separate git repo, **public**). Holds only `main` (the
+  canonical résumé, source of truth) and `role/*` **archetypes** (generic role positionings, no
+  company names). **Read-only from here** — per-job tailoring must NOT create branches here (that
+  would publicly expose the application list). Read without checking out:
+  `git -C ~/workspace/resume show main:resume.md` or `git -C ~/workspace/resume show role/<name>:resume.md`.
+- **Per-job résumé** (in the private jobs repo): `applications/<id>/resume.md` (tailored markdown)
+  and `applications/<id>/resume.pdf` (rendered). Tailoring happens here, not in the resume repo.
 - **Canonical facts**: `~/workspace/jobs/strategy/facts.md` — atomic, sourced claims plus the
   "do NOT claim" guardrails. The reference for verifiable particulars, not a menu to draft from.
 - **Project narratives and framing constraints**: `~/workspace/jobs/strategy/narrative.md`
@@ -275,23 +278,30 @@ through Stage 4 unattended.
 
 **Stage 2: Tailor Resume**
 
-1. `cd ~/workspace/resume && git fetch --all --prune`
-2. List remote branches (`git branch -r`), find the closest `role/` archetype. Do not ask the user.
-3. Create branch: `git checkout -b job/<id> origin/<base-branch>`
-4. Read `~/workspace/jobs/strategy/narrative.md` and `~/workspace/jobs/strategy/facts.md` — respect all factual constraints and guardrails. (This repo is public; the factual constraints live in the private jobs repo, not here.)
-5. Read `resume.md` (confirm you are on the new branch, not a stale `job/*` checkout) and the saved job description
-6. Tailor `resume.md`: adjust Summary, reorder/emphasize bullets, update Skills, compress less-relevant experience. Keep ATS-friendly formatting (see `resume/AGENTS.md`)
-7. Run `./_publish` to generate HTML and PDF
-8. Copy the PDF into the job directory with a descriptive filename:
+Per-job tailoring lives in the **private jobs repo** under `applications/<id>/`, never on a public
+resume-repo branch. The `role/*` archetypes are read-only starting points.
+
+1. Find the closest `role/*` archetype without checking anything out:
+   `git -C ~/workspace/resume branch -r --list 'origin/role/*'` (or `git -C ~/workspace/resume show-ref --heads`).
+   Pick the nearest; do not ask the user. If none fits, use `main`.
+2. Copy that archetype into the application folder as the tailoring base:
    ```bash
-   cp ~/workspace/resume/resume.pdf \
-      ~/workspace/jobs/applications/<id>/"Resume - Jack Senechal - <role>.pdf"
+   git -C ~/workspace/resume show role/<name>:resume.md \
+     > ~/workspace/jobs/applications/<id>/resume.md
    ```
-   Use the actual job title for `<role>` (e.g. `Platform Engineer`, `Staff Software Engineer`).
-9. `git add -A && git commit -m "Tailor resume for <company> <role>"`
-10. `git push -u origin job/<id>`
-11. `xdg-open ~/workspace/jobs/applications/<id>/"Resume - Jack Senechal - <role>.pdf"`
-12. Update tracker: `resume_branch=job/<id>`, `role_branch=<base>`, `stage=resume_tailored`
+   (Use `main:resume.md` if starting from the canonical résumé.)
+3. Read `~/workspace/jobs/strategy/narrative.md` and `~/workspace/jobs/strategy/facts.md` — respect all factual constraints and guardrails.
+4. Read the saved job description, then tailor `applications/<id>/resume.md` in place: adjust Summary, reorder/emphasize bullets, update Skills, compress less-relevant experience. Keep ATS-friendly formatting (structural-only bolding, subject-elided register, gerund tense on current-role items, positive-positioning summary, no em/en dashes). Changed résumé bullets are external output: clear the **External Output Gate**.
+5. Render the PDF beside the markdown (self-contained script, no resume repo needed at runtime):
+   ```bash
+   ~/workspace/agent-tools/skills/job-search/scripts/make_resume_pdf.sh \
+     ~/workspace/jobs/applications/<id>/resume.md
+   ```
+   Writes `applications/<id>/resume.pdf`. `--name` is required (flag or `$JOB_SEARCH_APPLICANT_NAME`
+   from `profile.md`); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
+   print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
+6. `xdg-open ~/workspace/jobs/applications/<id>/resume.pdf` to eyeball it.
+7. Update tracker: `resume_branch=applications/<id>/resume.md`, `role_branch=role/<name>` (the archetype), `stage=resume_tailored`. Commit the tailored `resume.md` + `resume.pdf` in the jobs repo (no resume-repo commit, no `job/*` branch).
 
 **Stage 3: Prep Application**
 
@@ -351,7 +361,7 @@ application answers, cover letters, outreach messages, and recruiter replies. Tw
 
 For any written questions or essays identified in Stage 3:
 
-1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, `applications/<id>/company-research.md`, the tailored `resume.md`, `~/workspace/jobs/strategy/facts.md`, and `~/workspace/jobs/strategy/narrative.md`
+1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, `applications/<id>/company-research.md`, the tailored `applications/<id>/resume.md`, `~/workspace/jobs/strategy/facts.md`, and `~/workspace/jobs/strategy/narrative.md`
 2. Draft responses: specific to the user's experience, tailored to role and company, concise, and honest per the guardrails in `facts.md`. Write them properly rather than assembling them from the fact sheet; look up particulars (numbers, titles, dates, scope) there instead of recalling them, and let the argument and the voice be your own.
 3. Run the gate on the draft:
    a. **Fact check** — spawn a `sonnet` subagent, read-only, per `references/external-output-gate.md`.
@@ -451,30 +461,29 @@ Update tracker: `referral_contact` with top recommendation, `referral_status=ide
 
 **Stage 6: Finalize & Push**
 
-1. Verify all artifacts exist: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `connections.md`, `Resume - Jack Senechal - <role>.pdf` in `applications/<id>/` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
+1. Verify all artifacts exist in `applications/<id>/`: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `connections.md`, `resume.md`, `resume.pdf` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
 2. Update tracker: `stage=ready_to_apply`
-3. Commit and push job-search repo:
+3. Commit and push the job-search repo (per-job résumé and PDF are committed here now — nothing goes to the resume repo):
    ```bash
    cd ~/workspace/jobs
    git add -A
    git commit -m "Add <company> <role> application package"
    git push
    ```
-4. Verify resume branch was pushed: `cd ~/workspace/resume && git push -u origin job/<id>`
-5. Print summary:
+4. Print summary:
    ```
    Ready to apply: <Company> — <Role>
 
-   Resume: branch job/<id> (pushed to origin)
+   Resume: applications/<id>/resume.pdf (from archetype <role_branch>)
    Application: <application_url>
    Referral: <referral_contact> (<referral_status>)
    Research: jobs/applications/<id>/
 
    Files to review before applying:
-   - applications/<id>/application-responses.md              (edit your written answers)
-   - jobs/<id>/Resume - <Your Name> - <role>.pdf   (ready to upload)
+   - applications/<id>/application-responses.md   (edit your written answers)
+   - applications/<id>/resume.pdf                 (ready to upload)
 
-   Both repos pushed to GitHub — resume from any device with /job-search sync
+   Jobs repo pushed to GitHub — resume from any device with /job-search sync
    ```
 
 ### `discover` — Daily saved-list scan (orchestrator)
@@ -682,7 +691,8 @@ Create a fresh job search directory from scratch.
 
    ## Key Paths
    - **Tracker**: `~/workspace/jobs/tracker.csv`
-   - **Resume repo**: `~/workspace/resume/`
+   - **Resume repo**: `~/workspace/resume/` (public; `main` + `role/*` archetypes only, read-only)
+   - **Per-job résumé**: `~/workspace/jobs/applications/<id>/resume.md` + `resume.pdf`
    - **Job research**: `~/workspace/jobs/applications/<id>/`
    - **Archived job research**: `~/workspace/jobs/applications/archived/<id>/`
 
@@ -819,7 +829,7 @@ runtime (flags / env / read from the private profile) instead.
 
 ### Form-Filling Strategy
 
-1. **Resume upload**: Playwright Docker: `browser_file_upload` with `/home/pwuser/resume/resume.pdf`. browsermcp: prompt the user to upload manually.
+1. **Resume upload**: upload the tailored per-job PDF, `applications/<id>/resume.pdf`. Playwright Docker: `browser_file_upload` with the container-internal path for that file — the jobs repo must be mounted into the container for this (see `playwright-docker` skill; if only the resume repo is mounted, the per-job PDF is not reachable and you must upload manually). browsermcp: prompt the user to upload manually.
 2. **"Apply with LinkedIn"**: Worth trying — can prefill name/email/phone/location/LinkedIn. OAuth popup may fail; fall back to manual entry.
 3. **Dropdowns**: Lever's combobox dropdowns don't work with `browser_select_option`. Use click → ArrowDown → Enter. Standard HTML `<select>` (e.g., EEO fields) work with `browser_select_option`.
 4. **Location autocomplete**: Type city name only (e.g., "Portland"), wait for suggestions, ArrowDown + Enter. Full "City, State" often clears on blur.
@@ -846,7 +856,7 @@ runtime (flags / env / read from the private profile) instead.
 8. **A corrected fact is not fixed until it is fixed everywhere.** When any claim changes, add
     the wrong version to `strategy/claim-guards.txt`, run `scripts/check_claims.sh --all`, and
     fix every hit across both repos, including drafts, skeletons, and research notes.
-9. **Use `_publish`** after every resume edit, and commit the generated artifacts.
+9. **Render with `scripts/make_resume_pdf.sh`** after every résumé edit (writes `applications/<id>/resume.pdf`), and commit both `resume.md` and `resume.pdf` in the jobs repo. Never use the resume repo's `_publish` and never create `job/*` branches — per-job tailoring lives only in the private jobs repo.
 10. **Always push both repos** at the end of a pipeline run.
 11. **Draft application responses** for any written questions. Anything the user sends verbatim
     (application answers, cover letters, outreach replies) must be copy-pasteable as-is: no `>`

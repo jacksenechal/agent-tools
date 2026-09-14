@@ -6,13 +6,13 @@ File: `~/workspace/jobs/tracker.csv`
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string | yes | Slug identifier. Matches resume branch suffix (`job/<id>`) and research dir (`applications/<id>/`). E.g., `stripe-infra-eng`, `navan-ai-ex` |
+| `id` | string | yes | Slug identifier. Names the application dir `applications/<id>/` (which holds `resume.md` + `resume.pdf`). E.g., `stripe-infra-eng`, `navan-ai-ex` |
 | `company` | string | yes | Company name |
 | `role` | string | yes | Job title |
 | `url` | string | yes | LinkedIn job posting URL |
 | `stage` | enum | yes | Current pipeline stage (see below) |
-| `resume_branch` | string | no | Git branch in resume repo, e.g. `job/stripe-infra-eng` |
-| `role_branch` | string | no | Role archetype branch used as base, e.g. `role/ai-tooling-engineer` |
+| `resume_branch` | string | no | Path to the tailored per-job résumé in the jobs repo, `applications/<id>/resume.md` (empty until tailored). The column name is legacy — `job/*` branches are retired and per-job tailoring no longer uses the resume repo. Old rows may still hold stale `job/<id>` values. |
+| `role_branch` | string | no | The `role/*` archetype the résumé was derived from, e.g. `role/technology-executive`. These archetype branches live in the resume repo (read-only). |
 | `application_url` | string | no | Direct application URL (company careers site, Greenhouse, Lever, etc.) |
 | `referral_contact` | string | no | Name(s) of connection(s) identified for referral |
 | `referral_status` | enum | no | `none`, `identified`, `requested`, `received` |
@@ -32,7 +32,7 @@ Ordered progression:
 
 1. `discovered` — URL added, nothing else done
 2. `researched` — Job description scraped and saved
-3. `resume_tailored` — Resume branch created and published
+3. `resume_tailored` — `applications/<id>/resume.md` tailored from an archetype and rendered to `resume.pdf`
 4. `application_prepped` — Application form reviewed, fields documented
 5. `connections_found` — LinkedIn connections searched for referrals
 6. `ready_to_apply` — Everything prepared, waiting for manual submission
