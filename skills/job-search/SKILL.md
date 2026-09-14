@@ -26,7 +26,8 @@ the pipeline can usefully do alone on that row. Fast-track rows never stop.
 Any job-pipeline task. Beyond the phrases in the description, this also covers:
 "application status", "knowledge graph", "warmth score", "ingest linkedin", "saved jobs",
 "scan bookmarks", "still open", "orchestrator loop", "scout", "vet", "coherence read",
-"find high-coherence companies", and "re-gate"/"re-check the letters".
+"find high-coherence companies", "re-gate"/"re-check the letters", "networking", "who should
+I reach out to", and "this week's touches".
 
 The orchestrator runs on timers rather than on request:
 
@@ -35,6 +36,7 @@ The orchestrator runs on timers rather than on request:
 | `discover` | daily 06:00 (+15m jitter) | scan saved-job lists, auto-add, research |
 | `liveness` | Sundays 10:00 | are pre-application postings still open, sync saved lists |
 | `northbay` | Tuesdays 09:00 | run `strategy/north-bay-rescout.md` end to end |
+| `network` | Mondays 08:00 | weekly networking loop: fold in progress, deep think, write `this-week.md` |
 
 `discover` republishes the tracker artifact at the end of every run, so the morning view is
 current by roughly 06:30. See those sub-commands below, and `watch setup` to install the
@@ -131,14 +133,15 @@ Never point a fresh, unauthenticated browser at these sites — it trips bot det
 risks the user's accounts. Use the golden (persistent-login) session.
 
 Stages needing the authenticated browser: **1** (job posting + Glassdoor), **3** (form
-discovery), **5** (LinkedIn connection search). Stage **1** also includes broad public
-company research, which needs no browser session.
+discovery). Stage **1** also includes broad public company research, which needs no browser
+session.
 
 ## Knowledge Graph
 
-A local ArcadeDB graph of LinkedIn connections ranked by warmth. Used in Stage 5 to
-prioritize outreach. Run `/job-search kg setup` to initialize.
-See `references/knowledge-graph.md` for setup, schema, warmth algorithm, and query patterns.
+A local ArcadeDB graph of LinkedIn connections ranked by warmth. Feeds the networking track
+(`network` mode, `references/networking-loop.md`) and `kg query` lookups against it. Run
+`/job-search kg setup` to initialize. See `references/knowledge-graph.md` for setup, schema,
+warmth algorithm, and query patterns.
 
 ## External Output Gate
 
@@ -406,64 +409,12 @@ pandoc's default `max-width`/padding, which otherwise reads as ~2in margins). Us
 `·` (not a dash) in `--subtitle` to match the tailored resume title. `--name` is required (flag
 or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
 
-**Stage 5: Find Connections & Outreach Strategy**
+**Stage 5: Finalize & Push**
 
-**READ `references/linkedin-safety.md` BEFORE THIS STAGE.**
-
-#### Step 1: Search connections via a **sonnet subagent**
-
-Use `sonnet` (not haiku) for LinkedIn — the safety protocol is multi-step and stateful (page
-budgets, randomized waits, breather navigations, CAPTCHA bailout) and haiku follows it
-unreliably. This is careful protocol execution, not strategy: the subagent only gathers the
-person list. All ranking and outreach strategy happens in Step 4 on the main thread.
-
-Spawn an Agent (model: sonnet) with the task:
-> "Search LinkedIn for connections at `<Company>`. Read `references/linkedin-safety.md` first and follow the protocol exactly. Use this URL:
-> `https://www.linkedin.com/search/results/people/?keywords=my%20connections%20who%20currently%20work%20at%20<URL-ENCODED-COMPANY>&origin=FACETED_SEARCH&network=%5B%22F%22%2C%22S%22%5D`
-> Page through ALL results (max 8 LinkedIn page loads total, use google.com as breather between pages). For each person found, return: name, title, connection degree, mutual connections. NEVER click individual profiles. CAPTCHA RULE: if any snapshot shows a CAPTCHA or security challenge, STOP, navigate to google.com, and return 'CAPTCHA_DETECTED'. End by navigating to google.com. Return the full list verbatim."
-
-The subagent returns the raw person list; the main thread does all cross-referencing and strategic analysis.
-
-#### Step 2: Pull warmth scores from Knowledge Graph
-
-```bash
-python3 ~/workspace/agent-tools/skills/job-search/scripts/query_connections.py "<Company Name>"
-```
-
-Returns 1st-degree connections at the company ranked by warmth score. See `references/knowledge-graph.md` for score interpretation and setup. If the KG hasn't been set up, skip this step and note it in the output.
-
-#### Step 3: Cross-reference with hiring team
-
-Pull hiring team from `applications/<id>/job-posting.md`. Note which members appeared in search results and at what degree.
-
-#### Step 4: Strategic analysis
-
-For every person found, assess relevance, seniority, connection strength, and outreach value. Categorize into tiers and rank all of them — not just top 2-3:
-
-**Tier 1 — Warm 1st-degree**: Best path. Ask them to intro or submit a referral. Higher warmth score = higher confidence.
-**Tier 2 — Peer ICs on same/adjacent team**: Best direct outreach. Peer-to-peer feels natural; most companies give referral bonuses.
-**Tier 3 — Hiring manager**: High value, handle carefully. Lead with genuine curiosity about what they're building — not "I applied." Only recommend if there's a credible angle (shared background, specific technical question).
-**Tier 4 — Adjacent department**: Intel only. Low referral conversion.
-
-Outreach principles:
-- 1st-degree: ask casually about the role and whether they'd make an intro or submit a referral
-- 2nd-degree: conversational opener only — never ask for a referral in the first message
-- Hiring manager: research anything they've published or spoken about first
-- Always recommend applying regardless — referral is a booster, not a gate
-
-Any outreach message drafted here is externally-facing and passes the External Output Gate
-(`references/external-output-gate.md`) before it is presented to the user as sendable.
-
-#### Step 5: Save and update tracker
-
-Save to `applications/<id>/connections.md` using the template in `references/knowledge-graph.md`.
-Update tracker: `referral_contact` with top recommendation, `referral_status=identified`, `stage=connections_found`.
-
-**Stage 6: Finalize & Push**
-
-1. Verify all artifacts exist in `applications/<id>/`: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `connections.md`, `resume.md`, `resume.pdf` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
-2. Update tracker: `stage=ready_to_apply`
-3. Commit and push the job-search repo (per-job résumé and PDF are committed here now — nothing goes to the resume repo):
+1. Verify all artifacts exist in `applications/<id>/`: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `resume.md`, `resume.pdf` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
+2. Check `~/workspace/jobs/strategy/networking/people.md` for a warm contact at this company. If one exists, copy them into `referral_contact` and set `referral_status` from their roster status (`not_contacted`→`identified`, `reached_out`→`contacted`, `in_conversation`/`warm`→`replied`, `referred`→`referred`), and note it in `brief.md`. No per-application search: relationships are the networking track's job.
+3. Update tracker: `stage=ready_to_apply`
+4. Commit and push the job-search repo (per-job résumé and PDF are committed here now — nothing goes to the resume repo):
    ```bash
    cd ~/workspace/jobs
    git add -A
@@ -563,7 +514,7 @@ The instrument is in the private repo, `~/workspace/jobs/strategy/coherence-inst
 
 ### `pipeline` — Scout, vet, and prep Advance rows end to end
 
-One command: `scout` → `vet` on every new company → `add` (Stages 1-6) for every row whose
+One command: `scout` → `vet` on every new company → `add` (Stages 1-5) for every row whose
 verdict is `Advance` and whose posting is live. Stops before any submission, as always. See
 `references/coherence-pipeline.md` for the runbook and the expected shape of a run.
 
@@ -573,6 +524,25 @@ Runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end. Installed as
 `job-search-northbay.timer` (Tuesdays 09:00). Manual run:
 `scripts/orchestrator.sh northbay [--force] [--dry-run]`. The runbook itself lives in the
 private repo, so changes to what this mode does go there, not here.
+
+### `network` — Weekly networking loop (orchestrator)
+
+Read `references/networking-loop.md` first. Normally invoked by a systemd timer (Mondays
+~08:00), also run by hand in a session.
+
+1. **Practical pass.** Fold `strategy/networking/inbox.md` into the right person/org file and
+   status, advance due follow-ups, resolve open research items, refresh the set from the
+   knowledge graph and `coh_verdict=Advance` tracker rows.
+2. **Deep-think pass.** One fresh subagent on the strongest available model (Fable or Opus,
+   high effort) reads the practical pass's output and proposes up to three insights and one
+   recommendation for the week, free to say "stay the course."
+3. **Direction pass.** Write `strategy/networking/this-week.md`: at most two touches, each
+   with a one-sentence reason, plus a dated `journal.md` entry.
+4. Hard limits: **never sends** anything (drafts are marked `DRAFT`, Jack sends), **no
+   LinkedIn** (no golden browser), **at most two touches** in `this-week.md`, and it **never
+   changes tracker stage** (it may write `referral_contact`/`referral_status`).
+5. Commit and push the jobs repo, append a run line to `orchestrator.log`, rebuild and
+   republish the tracker artifact if any tracker column changed, and notify.
 
 ### `liveness` — Weekly liveness sweep + saved-list sync (orchestrator)
 
@@ -607,8 +577,9 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 2. Run `~/workspace/agent-tools/skills/job-search/scripts/install-orchestrator.sh`, which
    installs and enables the systemd user timers. `--uninstall` reverses it.
 3. Verify with `systemctl --user list-timers 'job-search-*'`. Expect `job-search-discover`
-   (06:00), `job-search-liveness` (Sun 10:00), and `job-search-northbay` (Tue 09:00). If a mode
-   is missing from the list, it is not running, no matter what the docs say.
+   (06:00), `job-search-liveness` (Sun 10:00), `job-search-northbay` (Tue 09:00), and
+   `job-search-network` (Mon 08:00). If a mode is missing from the list, it is not running, no
+   matter what the docs say.
 4. User timers only fire while a login session exists unless lingering is on. Check with
    `loginctl show-user "$USER" --property=Linger`; enable with `loginctl enable-linger $USER`.
 4. Tell the user about `loginctl enable-linger $USER` if they want timers to fire while logged

@@ -4,10 +4,10 @@ The end-to-end loop for finding roles at organizations worth working for, decidi
 and preparing the applications. Three stages, each a sub-command, chained by `pipeline`.
 
 ```
-scout  ──►  vet  ──►  add (Stages 1-6)  ──►  user applies
+scout  ──►  vet  ──►  add (Stages 1-5)  ──►  user applies
  find        score      research, resume,      (never automated)
- companies   tier 1     form, responses,
- first       verdict    connections
+ companies   tier 1     form, responses
+ first       verdict
 ```
 
 The framework itself (definition, mechanism, the eight dimensions, the probes) lives in the
@@ -83,13 +83,13 @@ Batch limit: 12-15 companies per session (shared WebSearch quota). Browser fallb
 
 ## Stage 3: add, for Advance rows
 
-The existing pipeline, Stages 1-6 in `SKILL.md`. Three things the coherence pass feeds into it:
+The existing pipeline, Stages 1-5 in `SKILL.md`. Three things the coherence pass feeds into it:
 - **Confirm the posting is live and US-eligible before Stage 2.** Two of the first run's nine
   hits were dead links; one was Berlin-only. Fetch the posting, read the location line.
 - **The tier-2 Glassdoor capture is the loop-question source.** The negative tail names the
   mechanism to ask about (how expectations are written before a review, how comp changed, what
   happened the last time someone pushed back, how often teams re-form). Put those in
-  `connections.md` so they travel with the outreach.
+  `brief.md` so they travel with the application.
 - **Watch items.** A closed req that was the better fit (reports to a founder, AI-native, public
   artifacts) goes in the tracker as `closed` with a watch note and gets mentioned in outreach.
 

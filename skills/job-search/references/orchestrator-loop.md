@@ -1,15 +1,16 @@
 # Orchestrator Loop
 
 A long-running background loop that keeps the pipeline fed and current without the user
-driving it. Three scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
-sync** (`liveness`, Sundays 10:00), and a **weekly North Bay re-scout** (`northbay`, Tuesdays
-09:00, which runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end).
+driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
+sync** (`liveness`, Sundays 10:00), a **weekly North Bay re-scout** (`northbay`, Tuesdays
+09:00, which runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end), and a **weekly
+networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below).
 
 Discovery's jitter is deliberately small (15 min): it rebuilds and republishes the tracker
 artifact at the end of every run, and a small jitter keeps that refreshed page ready early in
 the morning.
 
-All three are modes of `scripts/orchestrator.sh <discover|liveness|northbay>`, which is
+All four are modes of `scripts/orchestrator.sh <discover|liveness|northbay|network>`, which is
 also how to run one by hand. Installed timers are the ground truth for what is actually
 running: `systemctl --user list-timers 'job-search-*'`.
 
@@ -151,15 +152,28 @@ session counting double against the page budget, full delay-and-breather treatme
 abort to read-only on any anomaly. If more than 10 need syncing, do 10 and leave the rest for
 next week. Indeed writes are less constrained but still get natural pacing.
 
+## Weekly networking loop
+
+The coach + researcher + strategist pass over the sustained networking track. Full protocol:
+`references/networking-loop.md`; the framework it implements: the jobs repo's
+`strategy/networking/README.md`.
+
+It does not touch the browser (no LinkedIn, no golden session) and never sends anything —
+drafts land in a person's thread file marked `DRAFT` for Jack to send. It writes
+`strategy/networking/this-week.md` (at most two touches) and a dated `journal.md` entry, and
+never changes a tracker row's stage.
+
 ## Scheduling
 
-Two systemd user timers. Both use `RandomizedDelaySec` so the loop does not hit these sites
-at the same wall-clock minute every day, which is itself a bot signal.
+Four systemd user timers. All use `RandomizedDelaySec` so the loop does not hit these sites
+at the same wall-clock minute every run, which is itself a bot signal.
 
 | Timer | Cadence | Randomization |
 |---|---|---|
-| `job-search-discover.timer` | daily, ~09:00 | `RandomizedDelaySec=5400` (±90 min) |
-| `job-search-liveness.timer` | weekly, Sun ~10:00 | `RandomizedDelaySec=10800` (±3 h) |
+| `job-search-discover.timer` | daily, 06:00 | `RandomizedDelaySec=900` (±15 min) |
+| `job-search-liveness.timer` | weekly, Sun 10:00 | `RandomizedDelaySec=10800` (±3 h) |
+| `job-search-northbay.timer` | weekly, Tue 09:00 | `RandomizedDelaySec=7200` (±2 h) |
+| `job-search-network.timer` | weekly, Mon 08:00 | `RandomizedDelaySec=900` (±15 min); no browser needed |
 
 Additionally, the discovery run **skips at random roughly one day in seven**. Perfect daily
 regularity is more machine-like than occasional absence, and missing a day costs nothing

@@ -13,12 +13,15 @@ UNITS=(
   job-search-liveness.timer
   job-search-northbay.service
   job-search-northbay.timer
+  job-search-network.service
+  job-search-network.timer
 )
 
 ENABLE_TIMERS=(
   job-search-discover.timer
   job-search-liveness.timer
   job-search-northbay.timer
+  job-search-network.timer
 )
 
 uninstall() {

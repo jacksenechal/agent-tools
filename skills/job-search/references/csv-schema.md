@@ -15,7 +15,7 @@ File: `~/workspace/jobs/tracker.csv`
 | `role_branch` | string | no | The `role/*` archetype the résumé was derived from, e.g. `role/technology-executive`. These archetype branches live in the resume repo (read-only). |
 | `application_url` | string | no | Direct application URL (company careers site, Greenhouse, Lever, etc.) |
 | `referral_contact` | string | no | Name(s) of connection(s) identified for referral |
-| `referral_status` | enum | no | `none`, `identified`, `requested`, `received` |
+| `referral_status` | enum | no | `none`, `identified`, `contacted`, `replied`, `referred`, `inbound` |
 | `date_found` | date | yes | ISO date when job was first added (YYYY-MM-DD) |
 | `date_applied` | date | no | ISO date when application was submitted |
 | `date_updated` | date | yes | ISO date of last update to this row |
@@ -26,6 +26,11 @@ File: `~/workspace/jobs/tracker.csv`
 | `coh_date` | date | no | ISO date of the coherence read |
 | `track` | enum | no | `fast` or `deep`. How much attention this application gets, decided at `add` time and overridable by the user at any point. Empty means not yet routed. See `references/application-tracks.md` |
 
+`referral_contact` and `referral_status` are written by the networking track
+(`~/workspace/jobs/strategy/networking/`) when a real contact exists, not by `add`. `add`
+only reads `strategy/networking/people.md` for an existing warm contact and copies it in if
+present; there is no per-application connection search.
+
 ## Pipeline Stages
 
 Ordered progression:
@@ -34,14 +39,13 @@ Ordered progression:
 2. `researched` — Job description scraped and saved
 3. `resume_tailored` — `applications/<id>/resume.md` tailored from an archetype and rendered to `resume.pdf`
 4. `application_prepped` — Application form reviewed, fields documented
-5. `connections_found` — LinkedIn connections searched for referrals
-6. `ready_to_apply` — Everything prepared, waiting for manual submission
-7. `applied` — Application submitted (manual step by user)
-8. `interviewing` — In interview process
-9. `offer` — Received an offer (terminal)
-10. `rejected` — Application rejected (terminal)
-11. `withdrawn` — User withdrew application (terminal)
-12. `closed` — Posting taken down before applying (terminal)
+5. `ready_to_apply` — Everything prepared, waiting for manual submission
+6. `applied` — Application submitted (manual step by user)
+7. `interviewing` — In interview process
+8. `offer` — Received an offer (terminal)
+9. `rejected` — Application rejected (terminal)
+10. `withdrawn` — User withdrew application (terminal)
+11. `closed` — Posting taken down before applying (terminal)
 
 `closed` is set by the weekly liveness sweep and means only that the job listing disappeared,
 not that anyone said no. It is distinct from `rejected` (they declined) and `withdrawn` (the

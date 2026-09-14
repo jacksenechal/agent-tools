@@ -1,0 +1,7 @@
+[Unit]
+Description=Weekly networking loop (coach + researcher + strategist)
+
+[Service]
+Type=oneshot
+ExecStart=%h/workspace/agent-tools/skills/job-search/scripts/orchestrator.sh network
+TimeoutStartSec=7200

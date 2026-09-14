@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Orchestrator loop entry point. Invoked by systemd timers (job-search-discover.timer,
-# job-search-liveness.timer, job-search-northbay.timer) or manually.
+# job-search-liveness.timer, job-search-northbay.timer, job-search-network.timer) or manually.
 # See references/orchestrator-loop.md for the design this implements.
 set -euo pipefail
 
 usage() {
-  echo "Usage: $(basename "$0") <discover|liveness|northbay> [--force] [--dry-run]" >&2
+  echo "Usage: $(basename "$0") <discover|liveness|northbay|network> [--force] [--dry-run]" >&2
 }
 
 MODE="${1:-}"
 shift || true
 
-if [[ "$MODE" != "discover" && "$MODE" != "liveness" && "$MODE" != "northbay" ]]; then
+if [[ "$MODE" != "discover" && "$MODE" != "liveness" && "$MODE" != "northbay" && "$MODE" != "network" ]]; then
   usage
   exit 2
 fi
@@ -63,40 +63,42 @@ if [[ "$MODE" == "discover" && "$FORCE" -eq 0 ]]; then
   fi
 fi
 
-# Golden browser preflight: the loop needs the logged-in session that lives in the
-# playwright-display container.
+# Golden browser preflight: discover/liveness/northbay need the logged-in session that lives
+# in the playwright-display container. network mode touches no browser, so it skips this.
 #
 # NOTE: start-golden-browser.sh must NOT be invoked from the host. It runs INSIDE the
 # container (it references /ms-playwright and /home/pwuser) and takes no arguments.
 # The host-side way to bring the container up is docker compose in the playwright-docker
 # skill's assets dir.
-PW_ASSETS="${PW_ASSETS:-$HOME/.claude/skills/playwright-docker/assets}"
-# The compose file binds ${RESUME_REPO_PATH} as a volume, so it must be set or compose fails.
-export RESUME_REPO_PATH="${RESUME_REPO_PATH:-$HOME/workspace/resume}"
+if [[ "$MODE" != "network" ]]; then
+  PW_ASSETS="${PW_ASSETS:-$HOME/.claude/skills/playwright-docker/assets}"
+  # The compose file binds ${RESUME_REPO_PATH} as a volume, so it must be set or compose fails.
+  export RESUME_REPO_PATH="${RESUME_REPO_PATH:-$HOME/workspace/resume}"
 
-browser_up() {
-  docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "playwright-display"
-}
-
-if ! browser_up; then
-  if [[ -f "$PW_ASSETS/docker-compose.yml" ]]; then
-    echo "golden browser not running; starting via docker compose in $PW_ASSETS" >&2
-    (cd "$PW_ASSETS" && docker compose up -d) || true
-
-    # Bounded wait: the container needs time for X11 + supervisord + Chromium to come up.
-    for _ in $(seq 1 15); do
-      browser_up && break
-      sleep 3
-    done
-  else
-    echo "warning: no docker-compose.yml found at $PW_ASSETS" >&2
-  fi
+  browser_up() {
+    docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "playwright-display"
+  }
 
   if ! browser_up; then
-    DURATION=$(( $(date +%s) - START_TS ))
-    log_line "no-browser" "$DURATION" 3
-    echo "error: golden browser (playwright-display) not running and could not be started" >&2
-    exit 3
+    if [[ -f "$PW_ASSETS/docker-compose.yml" ]]; then
+      echo "golden browser not running; starting via docker compose in $PW_ASSETS" >&2
+      (cd "$PW_ASSETS" && docker compose up -d) || true
+
+      # Bounded wait: the container needs time for X11 + supervisord + Chromium to come up.
+      for _ in $(seq 1 15); do
+        browser_up && break
+        sleep 3
+      done
+    else
+      echo "warning: no docker-compose.yml found at $PW_ASSETS" >&2
+    fi
+
+    if ! browser_up; then
+      DURATION=$(( $(date +%s) - START_TS ))
+      log_line "no-browser" "$DURATION" 3
+      echo "error: golden browser (playwright-display) not running and could not be started" >&2
+      exit 3
+    fi
   fi
 fi
 
@@ -104,6 +106,7 @@ case "$MODE" in
   discover) PROMPT="/job-search discover" ;;
   liveness) PROMPT="/job-search liveness" ;;
   northbay) PROMPT="Read $JOBS_DIR/strategy/north-bay-rescout.md and execute it end to end." ;;
+  network) PROMPT="/job-search network" ;;
 esac
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

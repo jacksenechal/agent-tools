@@ -103,9 +103,9 @@ python3 ~/workspace/agent-tools/skills/job-search/scripts/query_connections.py "
 
 Returns 1st-degree connections currently at the company, ranked by warmth.
 
-**Note:** Matches on company name exactly as it appears in LinkedIn profiles. The live LinkedIn
-search (Stage 5 Step 1) is authoritative for who's actually there. This query adds warmth
-context on top of those results.
+**Note:** Matches on company name exactly as it appears in LinkedIn profiles. It adds warmth
+context on top of whatever the networking track or a person's own reporting has already
+surfaced; it does not itself confirm who currently works there.
 
 ### Direct queries
 
@@ -124,46 +124,37 @@ curl -s http://localhost:2480/api/v1/command/KnowledgeGraph \
 Default credentials: `root` / `playwithdata` — change by updating `JAVA_OPTS` in the
 docker-compose.yml and the `ARCADE_PASS` constant in both scripts (or set `ARCADE_PASS` env var).
 
-## connections.md Template
+## Org file template (networking track)
 
-Save findings to `applications/<id>/connections.md`:
+Save to `strategy/networking/orgs/<slug>.md` (see `references/networking-loop.md` and the
+jobs repo's `strategy/networking/README.md`):
 
 ```markdown
-# Connections at <Company>
+# <Company>
 
-## 1st Degree Connections
-- <name> — <title> | Warmth: <score>
-- ...
+## Why this org
+<Coherence read (`coh_verdict` and why-line) or warm-cluster reason this org is in the set.>
 
-(or "None found")
+## People
+| Name | Relation | Warmth | Status | Last touch |
+|---|---|---|---|---|
+| <name> | <1st-degree / peer / alumni / ...> | <KG score or plain read> | <not_contacted / reached_out / in_conversation / warm / referred / dormant> | <date> |
 
-## 2nd Degree Connections (complete list)
-- <name> — <title> | Mutual: <mutual connection names>
-- ...
+## Angles
+<Specific framings worth trying: shared background, a published artifact, a mutual connection.>
 
-(<N> total across <M> pages of results)
+## Open questions
+<What the next research pass should resolve: who is there now, what changed, is a role open.>
 
-## Hiring Team (from job posting)
-- <name> — <title> (<connection degree, if found in search>)
-
-## Outreach Strategy
-
-### Recommended Actions (ranked by priority)
-
-**1. [Tier] [Approach]: [Name] — [Title]**
-- Why: <team relevance, seniority fit, warmth score rationale>
-- Approach: <specific framing>
-- Draft message:
-  > <short, natural-sounding message the user can copy and adapt>
-
-**2. [Tier] [Approach]: [Name] — [Title]**
-...
-
-(continue for ALL viable connections, ranked)
-
-### Strategic Summary
-- Best path to referral: <1-2 sentences>
-- Backup paths: <alternatives>
-- Key insight: <non-obvious observation>
-- Reminder: Apply regardless. Referral is a booster, not a gate.
+## Next
+<The one or two concrete next steps, if any are due.>
 ```
+
+### Ranking people
+
+Still useful for deciding who to talk to first:
+
+**Tier 1 — Warm 1st-degree**: real interaction history, highest response likelihood.
+**Tier 2 — Peers on the same/adjacent team**: natural peer-to-peer outreach.
+**Tier 3 — Hiring manager**: high value, handle carefully; lead with genuine curiosity, not "I applied."
+**Tier 4 — Adjacent department**: intel only, low conversion.

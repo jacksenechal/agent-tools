@@ -87,7 +87,7 @@ own-narrative churn, that is a signal to fix `facts.md`, not to route deep.
 | Resume | tailor from nearest archetype | revisit the framing, not just the bullets |
 | `brief.md` | 5 lines | one page |
 | Cover letter | if wanted, drafted and gated | drafted after Jack has seen the brief |
-| Connections / outreach | only if a 1st-degree contact already exists | full search and outreach strategy |
+| Connections / outreach | reads `strategy/networking/people.md` for an existing warm contact, copies it into `referral_contact` if present; no per-application search | same |
 | Interview prep | not yet | seeded |
 | Stops at | `ready_to_apply` | Jack's direction, usually after `brief.md` |
 
