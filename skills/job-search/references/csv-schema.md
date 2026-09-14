@@ -6,7 +6,7 @@ File: `~/workspace/jobs/tracker.csv`
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string | yes | Slug identifier. Names the application dir `applications/<id>/` (which holds `resume.md` + `resume.pdf`). E.g., `stripe-infra-eng`, `navan-ai-ex` |
+| `id` | string | yes | Slug identifier. Names the application dir `applications/<id>/` (which holds `resume.md` + `Resume - <Name> - <Role>.pdf`). E.g., `stripe-infra-eng`, `navan-ai-ex` |
 | `company` | string | yes | Company name |
 | `role` | string | yes | Job title |
 | `url` | string | yes | LinkedIn job posting URL |
@@ -37,7 +37,7 @@ Ordered progression:
 
 1. `discovered` — URL added, nothing else done
 2. `researched` — Job description scraped and saved
-3. `resume_tailored` — `applications/<id>/resume.md` tailored from an archetype and rendered to `resume.pdf`
+3. `resume_tailored` — `applications/<id>/resume.md` tailored from an archetype and rendered to `Resume - <Name> - <Role>.pdf`
 4. `application_prepped` — Application form reviewed, fields documented
 5. `ready_to_apply` — Everything prepared, waiting for manual submission
 6. `applied` — Application submitted (manual step by user)

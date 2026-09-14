@@ -10,7 +10,7 @@ persistent sessions and file upload support. It is the recommended setup for thi
 
 Run `/playwright-docker setup` to configure it. Once set up:
 - Tools are available as `mcp__playwright__browser_*`
-- Resume uploads use `browser_file_upload`. Per-job résumés now live at `applications/<id>/resume.pdf` in the jobs repo, so the jobs repo must be mounted into the container for programmatic upload (see the `playwright-docker` skill's mount notes). The resume repo's `/home/pwuser/resume/resume.pdf` is the canonical résumé only, not the tailored per-job one.
+- Resume uploads use `browser_file_upload`. Per-job résumés now live at `applications/<id>/Resume - <Name> - <Role>.pdf` in the jobs repo, so the jobs repo must be mounted into the container for programmatic upload (see the `playwright-docker` skill's mount notes). The resume repo's `/home/pwuser/resume/resume.pdf` is the canonical résumé only, not the tailored per-job one.
 - LinkedIn and other sessions persist across container restarts
 - Monitor automation in real time at http://localhost:6080
 

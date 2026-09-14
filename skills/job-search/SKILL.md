@@ -311,13 +311,16 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
 5. Render the PDF beside the markdown (self-contained script, no resume repo needed at runtime):
    ```bash
    ~/workspace/agent-tools/skills/job-search/scripts/make_resume_pdf.sh \
-     ~/workspace/jobs/applications/<id>/resume.md
+     ~/workspace/jobs/applications/<id>/resume.md \
+     "~/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"
    ```
-   Writes `applications/<id>/resume.pdf`. `--name` is required (flag or `$JOB_SEARCH_APPLICANT_NAME`
+   The output file is always named `Resume - <Name> - <Role>.pdf` (e.g. `Resume - Jack Senechal -
+   IT Director - AI.pdf`): the user wants the file name to read well for the recruiter who
+   downloads it. Never a bare `resume.pdf`. `--name` is required (flag or `$JOB_SEARCH_APPLICANT_NAME`
    from `profile.md`); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
    print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
-6. `xdg-open ~/workspace/jobs/applications/<id>/resume.pdf` to eyeball it.
-7. Update tracker: `resume_branch=applications/<id>/resume.md`, `role_branch=role/<name>` (the archetype), `stage=resume_tailored`. Commit the tailored `resume.md` + `resume.pdf` in the jobs repo (no resume-repo commit, no `job/*` branch).
+6. `xdg-open "~/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
+7. Update tracker: `resume_branch=applications/<id>/resume.md`, `role_branch=role/<name>` (the archetype), `stage=resume_tailored`. Commit the tailored `resume.md` + the named PDF in the jobs repo (no resume-repo commit, no `job/*` branch).
 
 **Stage 3: Prep Application**
 
@@ -424,7 +427,7 @@ or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
 
 **Stage 5: Finalize & Push**
 
-1. Verify all artifacts exist in `applications/<id>/`: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `resume.md`, `resume.pdf` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
+1. Verify all artifacts exist in `applications/<id>/`: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `resume.md`, `Resume - <Name> - <Role>.pdf` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
 2. Check `~/workspace/jobs/strategy/networking/people.md` for a warm contact at this company. If one exists, copy them into `referral_contact` and set `referral_status` from their roster status (`not_contacted`→`identified`, `reached_out`→`contacted`, `in_conversation`/`warm`→`replied`, `referred`→`referred`), and note it in `brief.md`. No per-application search: relationships are the networking track's job.
 3. Update tracker: `stage=ready_to_apply`
 4. Commit and push the job-search repo (per-job résumé and PDF are committed here now — nothing goes to the resume repo):
@@ -438,14 +441,14 @@ or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
    ```
    Ready to apply: <Company> — <Role>
 
-   Resume: applications/<id>/resume.pdf (from archetype <role_branch>)
+   Resume: applications/<id>/Resume - <Name> - <Role>.pdf (from archetype <role_branch>)
    Application: <application_url>
    Referral: <referral_contact> (<referral_status>)
    Research: jobs/applications/<id>/
 
    Files to review before applying:
    - applications/<id>/application-responses.md   (edit your written answers)
-   - applications/<id>/resume.pdf                 (ready to upload)
+   - applications/<id>/Resume - <Name> - <Role>.pdf   (ready to upload)
 
    Jobs repo pushed to GitHub — resume from any device with /job-search sync
    ```
@@ -707,7 +710,7 @@ Create a fresh job search directory from scratch.
    ## Key Paths
    - **Tracker**: `~/workspace/jobs/tracker.csv`
    - **Resume repo**: `~/workspace/resume/` (public; `main` + `role/*` archetypes only, read-only)
-   - **Per-job résumé**: `~/workspace/jobs/applications/<id>/resume.md` + `resume.pdf`
+   - **Per-job résumé**: `~/workspace/jobs/applications/<id>/resume.md` + `Resume - <Name> - <Role>.pdf`
    - **Job research**: `~/workspace/jobs/applications/<id>/`
    - **Archived job research**: `~/workspace/jobs/applications/archived/<id>/`
 
