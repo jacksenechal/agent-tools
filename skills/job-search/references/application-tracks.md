@@ -86,7 +86,7 @@ own-narrative churn, that is a signal to fix `facts.md`, not to route deep.
 | Company research | one pass, enough to write honestly | parallel multi-angle, Glassdoor, negative-tail themes |
 | Resume | tailor from nearest archetype | revisit the framing, not just the bullets |
 | `brief.md` | 5 lines | one page |
-| Cover letter | if wanted, drafted and gated | drafted after Jack has seen the brief |
+| Cover letter | only if `application-form.md` shows a slot or the application goes to a person; otherwise outline only | same rule, and drafted after Jack has seen the brief |
 | Connections / outreach | reads `strategy/networking/people.md` for an existing warm contact, copies it into `referral_contact` if present; no per-application search | same |
 | Interview prep | not yet | seeded |
 | Stops at | `ready_to_apply` | Jack's direction, usually after `brief.md` |

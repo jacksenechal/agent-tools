@@ -346,7 +346,8 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
 
    ## Uploads Required
    - Resume (PDF)
-   - Cover letter? (yes/no)
+   - Cover letter slot: yes (field name) / no / unknown (form gated behind account creation).
+     This line decides whether Stage 4 writes a letter at all.
    ```
 4. Update tracker: `application_url` if newly found, `stage=application_prepped`
 
@@ -422,7 +423,19 @@ question, or a single blunt sentence, and a letter that needs a different struct
 one. Do not force a draft into this shape, do not check a finished draft against it, and never
 flatten a distinctive opening to comply with it. If the shape is not helping, abandon it.
 
-**Cover letters**: when a posting wants a cover letter (or it strengthens the app), draft it to
+**Cover letters are written only when there is somewhere to put one.** Stage 3 decides.
+Write a letter when `application-form.md` shows a cover-letter field or attachment slot, when
+the posting asks for one, or when the application goes to a person (email, recruiter thread,
+a hiring manager's inbox). Do **not** write one when the form has no slot, and do not write
+one speculatively when the form could not be enumerated (Workday and LawCruit tenants gated
+behind account creation are the usual case): several Workday applications took no letter at
+all, and each unused letter cost a full draft-and-gate cycle. In the no-slot and unknown
+cases, write `letter-outline.md` only (minutes, and it doubles as interview prep), record
+`Cover letter: none (no slot)` or `Cover letter: deferred (form gated)` in `brief.md`, and
+move on. Jack can kick off the letter later with `letter <id>` if the form turns out to take
+one.
+
+When a letter is called for, draft it to
 `applications/<id>/cover-letter.md`, run the full gate on it (fact check, reconcile, slop pass,
 `check_claims.sh`), and only then render the PDF (plain markdown; a leading `# ...` title line is treated as
 an internal doc title and dropped from the PDF). Render a styled, one-page PDF with the shared
@@ -646,6 +659,15 @@ See `references/knowledge-graph.md` → "Lifecycle".
 3. If the new stage is `rejected`, `withdrawn`, or `closed`, archive the folder too; if it is a
    live stage and the folder sits under `applications/archived/`, move it back. See "Archiving".
 4. Commit and push: `git add -A && git commit -m "Update <id> stage to <stage>" && git push` (`-A` so an archive move is included)
+
+### `letter <id>` — Write the cover letter for an application that skipped it
+
+For a row whose Stage 4 recorded `Cover letter: none` or `deferred` and where a slot has since
+turned up (the form accepted an attachment, a recruiter asked, Jack wants one anyway). Runs
+Stage 4's letter path only: read `brief.md` and `letter-outline.md` (write the outline first if
+it is missing), hand the outline to a `sonnet` drafter with the voice profile and `facts.md`,
+review, run the External Output Gate, render the one-page PDF, update `brief.md`'s cover-letter
+line, and commit. It does not touch the résumé, the form doc, or the tracker stage.
 
 ### `regate <id | --all-unsent>` — Re-run the gate over an existing letter
 
