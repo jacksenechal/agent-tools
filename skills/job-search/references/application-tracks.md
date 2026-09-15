@@ -134,7 +134,11 @@ argued the wrong thing.
 
 ## Batching
 
-The expensive thinking is per-archetype, not per-company. Three EM roles share nearly their
-whole case; only the challenge and the company specifics change. When several Fast-track
-applications of the same archetype are queued, work the archetype once and then instantiate,
-rather than starting each from scratch.
+The expensive thinking is per-archetype, not per-company: three EM roles share most of their
+case, and the résumé positioning and the proof points carry over. When several Fast-track
+applications of the same archetype are queued, work the archetype once and reuse it.
+
+The letter is the exception. Its opening and its argument are per-employer, because a letter
+that opens the same way for three companies has stopped saying anything to any of them. Reuse
+a paragraph when it proves a claim this letter is making; write the opening fresh from the
+brief every time.

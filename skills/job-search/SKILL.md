@@ -359,9 +359,17 @@ angle to polish, but not the decision of what the angle is.
 
 **Draft in Jack's voice from the first line** (`~/workspace/jobs/strategy/voice-profile.md`),
 not in generic cover-letter register to be rescued at the slop pass. Read the profile before
-drafting: the honest-limits move, concrete grounding over adjectives, genuine hedges kept, and
-the register it assigns to the artifact (cover letters: warm-professional). A draft that starts
-in his voice needs far less fixing and reads as his.
+drafting, including its whole-letter example and the register it assigns to the artifact
+(cover letters: warm-professional). Its traits are a palette, not a checklist: use the ones
+this letter calls for. A draft that starts in his voice needs far less fixing and reads as his.
+
+**The letter argues the brief.** `applications/<id>/brief.md` already says what this employer
+is hiring for and what the case is. Start there: the opening names their problem in their
+terms, and each paragraph earns one part of the case. Prior letters are fair to borrow from
+when a paragraph proves a claim this letter is making; the point is not to avoid reuse but to
+have something specific to say to this employer. If a sentence has shown up in the last few
+letters, that is a nudge to say the idea a different way, or to ask whether this letter needs
+it.
 
 **Every artifact produced in this stage passes the External Output Gate**
 (`references/external-output-gate.md`) before it is rendered or presented: fact check on the
