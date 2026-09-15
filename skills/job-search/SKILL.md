@@ -352,10 +352,19 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
 
 **Stage 4: Draft Application Responses**
 
-Do this on the main thread (Opus) or an explicit `opus` subagent — never sonnet. Choosing what
-to claim, which narrative to lead with, and how to handle a weak spot honestly is judgment
-work, and a fluent wrong answer here is worse than no draft. Sonnet may be handed a settled
-angle to polish, but not the decision of what the angle is.
+Two roles, split on purpose. The **main thread (Opus or Fable) writes the outline**: what to
+claim, which narrative leads, how the weak spot is handled, which particulars from `facts.md`
+each paragraph rests on. That is judgment work, and a fluent wrong answer is worse than no
+draft. A **`sonnet` subagent writes the prose** from that outline plus the voice profile,
+`facts.md`, and the brief; given a settled argument and a shape, it writes well and in Jack's
+register, and its sentences tend to be less mannered than the main thread's. The main thread
+then reviews and runs the gate.
+
+Keep the outline at the level of argument and claims, not sentences. One short paragraph per
+letter paragraph: the claim it makes, the proof it uses, the particulars that must be looked
+up, and anything the paragraph must not do. An outline written as near-prose only tests the
+outline. Save it as `applications/<id>/letter-outline.md` so the argument is on record next to
+the letter. `letter-outline.md` in the Nixon Peabody folder is the reference example.
 
 **Draft in Jack's voice from the first line** (`~/workspace/jobs/strategy/voice-profile.md`),
 not in generic cover-letter register to be rescued at the slop pass. Read the profile before
