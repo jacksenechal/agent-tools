@@ -377,8 +377,13 @@ one-line "must not". No sentence in the outline should be reusable in the letter
 threshold of specificity an outline stops meaning "follow this" and starts meaning "write
 exactly this", and the drafter obliges: it stitches the outline's sentences together and the
 letter reads awkward and does not flow. If the outline is that detailed, the main thread has
-already written the letter badly and should not pretend otherwise. Save it as
-`applications/<id>/letter-outline.md` so the argument is on record next to the letter.
+already written the letter badly and should not pretend otherwise. The outline's first line is the main thread's own read, stated rather than
+leaked: "My read of this seat is X. If X is wrong, the letter I would write is Y." A read that
+goes unstated does not go away; it tints the outline as hedges or as enthusiasm and the drafter
+inherits the tint (Homebound, 2026-09-18: a "keep the spend low" read produced a defensive letter
+with no story in it). If Y will not come, stop and look before writing the outline. The same
+line goes in `brief.md` under Read, so Jack sees the prior, not just its effects. Save the
+outline as `applications/<id>/letter-outline.md` so the argument is on record next to the letter.
 `applications/homebound-tech-lead-manager/letter-outline.md` (the 2026-09-18 version) is the
 reference example; the Nixon Peabody one is the over-specified counterexample.
 

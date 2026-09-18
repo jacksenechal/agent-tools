@@ -106,7 +106,7 @@ One page. If it runs longer, it has stopped being a brief.
 # Brief — <Company> <Role>
 
 - **Track**: fast | deep
-- **Read**: <one line: what this application is actually about>
+- **Read**: <one line: what this application is actually about, including the pipeline's own read of it, stated ("my read is X; if wrong, Y") rather than leaked into the tone>
 
 ## What they're hiring for
 <2-3 lines, in their words where possible. The real job behind the posting, including
