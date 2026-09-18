@@ -106,7 +106,9 @@ One page. If it runs longer, it has stopped being a brief.
 # Brief — <Company> <Role>
 
 - **Track**: fast | deep
-- **Read**: <one line: what this application is actually about, including the pipeline's own read of it, stated ("my read is X; if wrong, Y") rather than leaked into the tone>
+- **What**: <one line: what this seat is, in their terms>
+- **Read**: <the pipeline's own read, stated rather than leaked: one sentence on the company (will decisions here track reality, would this seat be heard); one clause on the seat (step up / lateral / step down; wanted or dutiful)>
+- **Ground**: <firm / thin / hollow, and what would settle it>
 
 ## What they're hiring for
 <2-3 lines, in their words where possible. The real job behind the posting, including
@@ -126,7 +128,7 @@ rather than manufacturing questions.>
 <One line: proceed, proceed with a caveat, or drop, and why.>
 ```
 
-The Fast-track version is the `Read`, `The case`, and `Recommendation` lines only.
+The Fast-track version is the `What`, `Read`, `Ground`, `The case`, and `Recommendation` lines only. The tracker artifact reads `Read` and `Ground` from every live brief and shows them at the top of the page; a brief without a `Ground` line shows as "no read yet".
 
 Write the brief *before* the cover letter on the Deep track. It is the thing Jack reacts
 to, and reacting to one page is far cheaper for him than reacting to a finished letter that
