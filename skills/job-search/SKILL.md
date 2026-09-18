@@ -361,6 +361,15 @@ draft. A **`sonnet` subagent writes the prose** from that outline plus the voice
 register, and its sentences tend to be less mannered than the main thread's. The main thread
 then reviews and runs the gate.
 
+**State the prior first.** Before writing the outline, the main thread writes one line at
+the top of `letter-outline.md`, labelled `Prior:`, saying what it thinks of this role for
+Jack (step up, lateral, step down, a stretch; wanted or dutiful) and whether that view should
+shape the letter. The Homebound letter of 2026-09-18 came out defensive because the main
+thread had filed the seat as a step down and never said so; the hedge leaked into the outline
+as constraints and the drafter wrote procedure. A prior written down is an object Jack can
+overrule; a prior left implicit is a tint on everything downstream. If the prior is "step down,
+dutiful", say so in the brief's Needs Jack line and ask before spending a letter on it.
+
 The outline is packed and short, and its length is a hard bound: **under 150 words of
 structure**, one numbered bullet per letter paragraph, each bullet a clause or two naming the
 claim and the proof, plus a short "salient facts" list of particulars to look up and a
