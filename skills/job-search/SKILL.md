@@ -361,14 +361,14 @@ draft. A **`sonnet` subagent writes the prose** from that outline plus the voice
 register, and its sentences tend to be less mannered than the main thread's. The main thread
 then reviews and runs the gate.
 
-**State the prior first.** Before writing the outline, the main thread writes one line at
-the top of `letter-outline.md`, labelled `Prior:`, saying what it thinks of this role for
-Jack (step up, lateral, step down, a stretch; wanted or dutiful) and whether that view should
-shape the letter. The Homebound letter of 2026-09-18 came out defensive because the main
-thread had filed the seat as a step down and never said so; the hedge leaked into the outline
-as constraints and the drafter wrote procedure. A prior written down is an object Jack can
-overrule; a prior left implicit is a tint on everything downstream. If the prior is "step down,
-dutiful", say so in the brief's Needs Jack line and ask before spending a letter on it.
+**State the read first.** The outline's first line is the main thread's own read of the seat,
+stated rather than leaked: "My read of this seat is X. If X is wrong, the letter I would write
+is Y." A read that goes unstated does not go away; it tints the outline as hedges or as
+enthusiasm and the drafter inherits the tint (Homebound, 2026-09-18: a "keep the spend low"
+read produced a defensive letter with no story in it). If Y will not come, stop and look
+before writing the outline. The same line goes in `brief.md` under Read, so Jack sees the
+prior, not just its effects, and if the read is "step down, dutiful", the brief's Needs Jack
+line asks him before a letter is spent on it.
 
 The outline is packed and short, and its length is a hard bound: **under 150 words of
 structure**, one numbered bullet per letter paragraph, each bullet a clause or two naming the
@@ -377,15 +377,11 @@ one-line "must not". No sentence in the outline should be reusable in the letter
 threshold of specificity an outline stops meaning "follow this" and starts meaning "write
 exactly this", and the drafter obliges: it stitches the outline's sentences together and the
 letter reads awkward and does not flow. If the outline is that detailed, the main thread has
-already written the letter badly and should not pretend otherwise. The outline's first line is the main thread's own read, stated rather than
-leaked: "My read of this seat is X. If X is wrong, the letter I would write is Y." A read that
-goes unstated does not go away; it tints the outline as hedges or as enthusiasm and the drafter
-inherits the tint (Homebound, 2026-09-18: a "keep the spend low" read produced a defensive letter
-with no story in it). If Y will not come, stop and look before writing the outline. The same
-line goes in `brief.md` under Read, so Jack sees the prior, not just its effects. Save the
-outline as `applications/<id>/letter-outline.md` so the argument is on record next to the letter.
-`applications/homebound-tech-lead-manager/letter-outline.md` (the 2026-09-18 version) is the
-reference example; the Nixon Peabody one is the over-specified counterexample.
+already written the letter badly and should not pretend otherwise. Save the outline as
+`applications/<id>/letter-outline.md` so the argument is on record next to the letter. The
+Homebound outline of 2026-09-18 (`homebound-tech-lead-manager/letter-outline.md`, under
+`applications/` or `applications/archived/`) is the reference example; the Nixon Peabody one
+is the over-specified counterexample.
 
 **Draft in Jack's voice from the first line** (`~/workspace/jobs/strategy/voice-profile.md`),
 not in generic cover-letter register to be rescued at the slop pass. Read the profile before
