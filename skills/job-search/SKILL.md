@@ -220,6 +220,10 @@ Walk through the full pipeline for a new job posting end-to-end.
    `coherence Pass`, stop. `Price` → continue, but carry the why-line into `job-posting.md`
    "Notes" so the loop questions and the seat shape are visible from the first artifact.
    `Advance` and `Unknown` → continue. A company vetted in the last 90 days is not re-vetted.
+   **State the read first.** Before the vet returns, the main thread writes its own read of
+   the company and of the seat, with its ground, into `job-posting.md` Notes (the brief's Read
+   line carries it forward). If the read and the vet verdict disagree, either way, the row goes
+   to tier 2 before a letter is spent (instrument, "The read").
 5d. **Route the application.** Apply the routing rules in `references/application-tracks.md`
    and write `fast` or `deep` to the row's `track` column. This decides how much of the rest of
    Stage 1 runs, so do it here rather than discovering it later. On the fast track, skip step 6
@@ -564,7 +568,7 @@ The instrument is in the private repo, `~/workspace/jobs/strategy/coherence-inst
    the tier-1 report block. If WebSearch is quota-refused, the agent falls back to a playwright
    browser driving `https://duckduckgo.com/html/?q=` (two servers, so two agents at a time).
    No LinkedIn, no review scraping.
-2. The main thread re-derives the verdict under the instrument's rules (n floors, windowed
+2. The main thread writes its read line above the block first (instrument, "The read"), then re-derives the verdict under the instrument's rules (n floors, windowed
    flags, growth absorption, Blind gap, seed read for small companies) and writes the columns
    plus a one-line note. Verdicts: `Advance`, `Price`, `Pass`, `Unknown`.
 3. `Pass` rows at `discovered` through `applied`: set `stage=withdrawn` with the note
