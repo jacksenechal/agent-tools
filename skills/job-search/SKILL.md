@@ -236,10 +236,10 @@ Walk through the full pipeline for a new job posting end-to-end.
      ```markdown
      # Glassdoor — <Company>
 
-     **URL**: <glassdoor-reviews-url>
-     **Overall Rating**: <X.X/5>
-     **Recommend to a Friend**: <X%>
-     **CEO Approval**: <X%>
+     - **URL**: <glassdoor-reviews-url>
+     - **Overall Rating**: <X.X/5>
+     - **Recommend to a Friend**: <X%>
+     - **CEO Approval**: <X%>
 
      ## Pros (common themes)
      - <theme>
@@ -332,8 +332,8 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
    ```markdown
    # Application Form — <Company> <Role>
 
-   **Application URL**: <url>
-   **Platform**: <Greenhouse/Lever/Workday/Custom/LinkedIn Easy Apply>
+   - **Application URL**: <url>
+   - **Platform**: <Greenhouse/Lever/Workday/Custom/LinkedIn Easy Apply>
 
    ## Required Fields
    - <field name>: <type> — <notes>

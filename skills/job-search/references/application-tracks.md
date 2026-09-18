@@ -105,8 +105,8 @@ One page. If it runs longer, it has stopped being a brief.
 ```markdown
 # Brief — <Company> <Role>
 
-**Track**: fast | deep
-**Read**: <one line: what this application is actually about>
+- **Track**: fast | deep
+- **Read**: <one line: what this application is actually about>
 
 ## What they're hiring for
 <2-3 lines, in their words where possible. The real job behind the posting, including
