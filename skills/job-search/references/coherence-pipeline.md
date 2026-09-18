@@ -60,8 +60,10 @@ Rules that matter:
 
 ## Stage 2: vet
 
-Inputs: company name. Output: `coh_cell`, `coh_derivative`, `coh_verdict`, `coh_date` on every
-row for that company, a note, and an entry in the cases file.
+Inputs: company name. Output: `coh_cell`, `coh_derivative`, `coh_verdict`, `coh_date`, `coh_tags`
+on every row for that company, a note, and an entry in the cases file. The tags carry what the
+verdict hides (which flag, which gap, how thin the evidence), so the tracker view can show the
+measurement (level, trend, tags) and keep the verdict as a small action label.
 
 The tier-1 read is ~30 minutes of summary pages for a person and 7-14 tool calls for an agent:
 employee side (Glassdoor with n, Blind as the friction-gated source, the directional rule under

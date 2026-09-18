@@ -216,7 +216,7 @@ Walk through the full pipeline for a new job posting end-to-end.
 5c. **Coherence read.** If no row for this company has a `coh_verdict`, run `vet <company>`
    now (one `sonnet` subagent, tier-1 section of
    `~/workspace/jobs/strategy/coherence-instrument.md`) and write `coh_cell`,
-   `coh_derivative`, `coh_verdict`, `coh_date` on the row. `Pass` → `stage=withdrawn`, note
+   `coh_derivative`, `coh_verdict`, `coh_date`, `coh_tags` on the row. `Pass` → `stage=withdrawn`, note
    `coherence Pass`, stop. `Price` → continue, but carry the why-line into `job-posting.md`
    "Notes" so the loop questions and the seat shape are visible from the first artifact.
    `Advance` and `Unknown` → continue. A company vetted in the last 90 days is not re-vetted.
@@ -558,7 +558,11 @@ hits. Runs as one `sonnet` subagent with `WebSearch`/`WebFetch`; no browser.
 ### `vet <company | id | --all-unvetted>` — Tier-1 coherence read
 
 Score a company on the organizational-coherence instrument from summary pages only, and write
-the result to the tracker's `coh_cell`, `coh_derivative`, `coh_verdict`, `coh_date` columns.
+the result to the tracker's `coh_cell`, `coh_derivative`, `coh_verdict`, `coh_date`, `coh_tags`
+columns. The verdict is the pipeline's action; what the user reads at a glance is the
+**roll-up** (instrument, "Roll-up: level, trend, tags"): level from the cell, trend from the
+derivative, and `coh_tags` naming what produced the verdict (`pe`, `layoffs`, `ceiling 0.4`,
+`thin`, ...). Write the tags from the instrument's vocabulary only; an empty string is valid.
 The instrument is in the private repo, `~/workspace/jobs/strategy/coherence-instrument.md`
 (the "Tier 1: the fast filter" section); scored cases and calibration in `coherence-cases.md`.
 
@@ -759,7 +763,7 @@ Create a fresh job search directory from scratch.
 1. `mkdir -p ~/workspace/jobs && cd ~/workspace/jobs && git init`
 2. Create tracker with headers:
    ```bash
-   echo "id,company,role,url,stage,resume_branch,role_branch,application_url,referral_contact,referral_status,date_found,date_applied,date_updated,notes,coh_cell,coh_derivative,coh_verdict,coh_date" > tracker.csv
+   echo "id,company,role,url,stage,resume_branch,role_branch,application_url,referral_contact,referral_status,date_found,date_applied,date_updated,notes,coh_cell,coh_derivative,coh_verdict,coh_date,track,coh_tags" > tracker.csv
    ```
 3. Create directories: `mkdir -p jobs data/linkedin`
 4. Create `CLAUDE.md`:
