@@ -361,11 +361,17 @@ draft. A **`sonnet` subagent writes the prose** from that outline plus the voice
 register, and its sentences tend to be less mannered than the main thread's. The main thread
 then reviews and runs the gate.
 
-Keep the outline at the level of argument and claims, not sentences. One short paragraph per
-letter paragraph: the claim it makes, the proof it uses, the particulars that must be looked
-up, and anything the paragraph must not do. An outline written as near-prose only tests the
-outline. Save it as `applications/<id>/letter-outline.md` so the argument is on record next to
-the letter. `applications/archived/nixon-peabody-dir-ai-innovation/letter-outline.md` is the reference example.
+The outline is packed and short, and its length is a hard bound: **under 150 words of
+structure**, one numbered bullet per letter paragraph, each bullet a clause or two naming the
+claim and the proof, plus a short "salient facts" list of particulars to look up and a
+one-line "must not". No sentence in the outline should be reusable in the letter. Past a
+threshold of specificity an outline stops meaning "follow this" and starts meaning "write
+exactly this", and the drafter obliges: it stitches the outline's sentences together and the
+letter reads awkward and does not flow. If the outline is that detailed, the main thread has
+already written the letter badly and should not pretend otherwise. Save it as
+`applications/<id>/letter-outline.md` so the argument is on record next to the letter.
+`applications/homebound-tech-lead-manager/letter-outline.md` (the 2026-09-18 version) is the
+reference example; the Nixon Peabody one is the over-specified counterexample.
 
 **Draft in Jack's voice from the first line** (`~/workspace/jobs/strategy/voice-profile.md`),
 not in generic cover-letter register to be rescued at the slop pass. Read the profile before
