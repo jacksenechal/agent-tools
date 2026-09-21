@@ -12,6 +12,15 @@ that changed in this session.
 Internal artifacts (`job-posting.md`, `glassdoor.md`, `company-research.md`, tracker
 notes, strategy docs) do not go through the gate.
 
+**Scope test: does the text make claims about Jack's record** (numbers, titles, dates, scope,
+what he did or built)? If yes, it is gated, whatever its length. If no, it is outside the gate:
+a short courtesy note whose whole content is thanks, continued interest, and logistics that
+restate the thread (an acknowledgment of "we'll restart in Q4", a scheduling reply) gets
+`check_claims.sh` if it is saved to a file and is then handed to Jack, who edits it himself. No
+fact-check agent, no slop agent. When it is unclear whether a sentence is a claim about his
+record, it is. (Added 2026-09-21, after a fact-check agent was spawned on a 53-word
+acknowledgment.)
+
 ## Order of operations
 
 Facts settle first, prose second, machine check last.

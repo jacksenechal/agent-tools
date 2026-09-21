@@ -21,6 +21,13 @@ stops after `brief.md` by design so the user's direction shapes the resume and l
 than arriving after they are written. That is not a confirmation prompt; it is the end of what
 the pipeline can usefully do alone on that row. Fast-track rows never stop.
 
+**Size the event first.** Not everything that arrives is pipeline work. If it changes no
+tracker stage, needs no decision from the user, and puts no claims about their record in front
+of a reader, it is a status update: a dated tracker note, the message appended to the row's
+thread file, one line in the networking inbox if a person's status changed, and a short read in
+chat. Nothing else in this skill runs for it: no sweep, no subagents, no gate beyond
+`check_claims.sh`, no artifact rebuild. The private repo's `CLAUDE.md` has the full rule.
+
 ## When To Use This
 
 Any job-pipeline task. Beyond the phrases in the description, this also covers:
@@ -150,8 +157,11 @@ recruiter messages, follow-ups, changed resume bullets) passes a two-agent gate 
 "ready": a **fact check** on the raw draft, then a **`no-ai-slop` pass** for voice, then a
 deterministic `scripts/check_claims.sh` run. Facts settle before prose gets polished.
 
-This is not optional and not a judgment call per artifact. Full protocol, corpus, verdict
-scheme, and propagation rule: `references/external-output-gate.md`.
+For text that makes claims about the user's record, this is not optional and not a judgment
+call per artifact. A short courtesy note with no such claims (thanks, continued interest,
+logistics that restate the thread) is outside the gate: `check_claims.sh` if saved, then hand it
+over. Scope test, full protocol, corpus, verdict scheme, and propagation rule:
+`references/external-output-gate.md`.
 
 ## Application Tracks
 
@@ -963,5 +973,6 @@ runtime (flags / env / read from the private profile) instead.
     `tracker.csv` or to a `job-posting.md` location line, and at the end of every `discover`
     run, rebuild and republish it: `python3 artifact/build.py`, then publish
     `artifact/tracker-view.html` with the Artifact tool passing the pinned URL from the private
-    repo's `artifact/README.md` as `url` (never create a new artifact). Skip only if the private
+    repo's `artifact/README.md` as `url` (never create a new artifact). A notes-only change
+    from a status update (see "Size the event first") can wait for the next `discover` run. Skip only if the private
     repo has no `artifact/` directory.
