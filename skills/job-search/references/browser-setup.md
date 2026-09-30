@@ -18,10 +18,13 @@ See the `playwright-docker` skill for full lifecycle management (start/stop/logi
 
 ---
 
-## Fallback: browsermcp
+## Also first-class: browsermcp
 
-If you prefer not to run Docker, [browsermcp](https://browsermcp.com/) controls your real
-desktop browser via Chrome DevTools Protocol.
+[browsermcp](https://browsermcp.com/) controls your real desktop browser via Chrome DevTools
+Protocol. It connects only when you open and enable it, so a connected browsermcp is a
+deliberate grant: agents use it for authenticated steps without asking. Error meanings are in
+SKILL.md, "Browser Automation" (`This page cannot be automated` means a local/internal URL,
+not bot detection).
 
 **Limitations**: Cannot do file uploads (native OS dialogs are unreachable). Shares your
 real browser session — automation and personal browsing are not isolated.

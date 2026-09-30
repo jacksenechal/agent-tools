@@ -86,8 +86,18 @@ This skill requires an MCP server providing Playwright-style browser tools
 **Default**: Dockerized Playwright via the `/playwright-docker` skill — persistent sessions,
 file uploads, real-time noVNC monitoring. Run `/playwright-docker setup` if not yet configured.
 
-**Fallback**: browsermcp — controls your real desktop browser. No Docker required, but cannot
-do file uploads. See `references/browser-setup.md` for fallback setup instructions.
+**Also first-class**: browsermcp (`mcp__browsermcp__*`) drives the user's real, logged-in
+desktop browser. It only connects when the user has opened and enabled it on purpose, so when
+it is connected, use it for any authenticated-browser step (Indeed, Glassdoor, LinkedIn under
+the same safety protocol) without asking. It cannot do file uploads. Error meanings, so they
+are not mistaken for bot detection:
+- `This page cannot be automated`: browsermcp refuses local and local-ish URLs (localhost,
+  bare internal hostnames, Chrome error pages). It is **not** the site blocking automation.
+  Usually the tab followed a link or redirect to such a host; report the URL and move on.
+- `No connection to browser extension` / `page ... moved into back/forward cache`: the
+  extension port dropped. Call `browser_snapshot` once without navigating (the page often
+  loaded anyway); if it still fails, ask the user to reconnect (`/mcp`).
+Setup: `references/browser-setup.md`.
 
 ## Research Routing
 
@@ -132,12 +142,15 @@ postings, connection search), **Glassdoor**, **Indeed**, and **application form 
 filling** (the persistent session and file uploads live here).
 
 **Pattern**: spawn a `haiku` subagent (or `sonnet` for multi-step LinkedIn work) via the
-Agent tool, instructing it to use the `mcp__playwright-golden__*` tools. Give it: the URL(s),
+Agent tool, instructing it to use the `mcp__playwright-golden__*` tools, or
+`mcp__browsermcp__*` when that is the one connected (browser agents share one browser, so run
+them one at a time). Give it: the URL(s),
 exact fields to extract, and a requirement to return verbatim text — no summarization.
 CAPTCHA = STOP. The main thread does all writing.
 
 Never point a fresh, unauthenticated browser at these sites — it trips bot detection and
-risks the user's accounts. Use the golden (persistent-login) session.
+risks the user's accounts. Use the golden (persistent-login) session or browsermcp (the
+user's own logged-in browser).
 
 Stages needing the authenticated browser: **1** (job posting + Glassdoor), **3** (form
 discovery). Stage **1** also includes broad public company research, which needs no browser
