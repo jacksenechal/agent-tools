@@ -247,6 +247,12 @@ Walk through the full pipeline for a new job posting end-to-end.
    the company and of the seat, with its ground, into `job-posting.md` Notes (the brief's Read
    line carries it forward). If the read and the vet verdict disagree, either way, the row goes
    to tier 2 before a letter is spent (instrument, "The read").
+5c2. **Work-life-balance filter.** Apply the "Hard filters" section of the private
+   `~/workspace/jobs/strategy/leadership-search.md` using the vet's work/life sub-rating and
+   any stated hours expectation (founder statements, the posting). A **fail** there →
+   `stage=withdrawn`, note `wlb: <evidence>`, stop and archive. A **flag** → continue, and put
+   the hours question at the top of the brief's "Needs Jack". This is independent of the
+   coherence verdict: long hours sold honestly are not incoherence, but they still fail here.
 5d. **Route the application.** Apply the routing rules in `references/application-tracks.md`
    and write `fast` or `deep` to the row's `track` column. This decides how much of the rest of
    Stage 1 runs, so do it here rather than discovering it later. On the fast track, skip step 6
@@ -976,6 +982,9 @@ runtime (flags / env / read from the private profile) instead.
     Area. Anything requiring residence in another country or time zone, or in-office in another
     US metro, is closed at discovery with a note, never researched. Read the location line of
     the actual posting, not the aggregator's.
+14b. **Work-life-balance filter.** A second hard filter, applied at step 5c2 from the private
+    `strategy/leadership-search.md` "Hard filters". Every vet reports the work/life sub-rating
+    (with n) and any stated hours expectation so it can run.
 15. **No PII anywhere in this public skill** (SKILL.md, scripts, assets — the whole repo). All
     personal details live in the private job-search repo (`~/workspace/jobs/`, incl. `profile.md`)
     and are passed to scripts at runtime via flags or env vars. See the repo `AGENTS.md`.
