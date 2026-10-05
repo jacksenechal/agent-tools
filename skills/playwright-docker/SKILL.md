@@ -294,34 +294,43 @@ Once set up, use `mcp__playwright__` tools in any skill or task:
 
 ### File uploads
 
-`docker-compose.yml` defines read-only mounts for both the resume repo
-(`/home/pwuser/resume`) and the jobs repo (`${JOBS_REPO_PATH:-~/workspace/jobs}` →
-`/home/pwuser/jobs`), but **verify before relying on either** — `docker inspect
-playwright-display --format '{{json .Mounts}}'` is the ground truth, not this file. As of
-2026-10-05 the running `playwright-display` container only has the resume mount; the jobs
-mount was added to the compose file after the container was last created, so it isn't active
-in the running container (a `docker compose up -d --build`, which recreates the container, would
-pick it up — this has NOT been done as part of this check; do not restart the container as a
-side effect of a file-upload task).
+As of the 2026-10-05 recreate, `docker-compose.yml` mounts both repos read-only at their
+**identical host paths** inside the container: `~/workspace/jobs` → `/home/jack/workspace/jobs`
+and `~/workspace/resume` → `/home/jack/workspace/resume` (not `/home/pwuser/...` or
+`/home/node/...`). Verify before relying on this — `docker inspect playwright-display --format
+'{{json .Mounts}}'` is the ground truth, not this file.
 
-Also, `browser_file_upload` (both `mcp__playwright__` and `mcp__playwright-golden__`) only
-accepts paths under `/tmp/.playwright-mcp-golden` or `/home/node` — **not** `/home/pwuser`,
-even though that's where the repo mounts land and where the container's browser processes run
-as `pwuser`. The working procedure, confirmed live:
+The identical-path mount exists because of how `browser_file_upload`'s path check is split
+across two layers that otherwise disagree:
+- The **allowlist check** runs on the harness side (Claude Code's own MCP "roots"), which only
+  knows real host paths — in practice, the agent's own working directory (e.g.
+  `/home/jack/workspace/jobs`) plus the MCP server's declared output dir
+  (`/tmp/.playwright-mcp-golden`).
+- The **actual file read** happens inside the container's mount namespace, which only sees
+  whatever `docker-compose.yml` bind-mounted and only at the path it was mounted to.
 
-```bash
-# Copy the file in from the host (resolve the real host path first, e.g. from the jobs repo)
-docker cp "<host file>" playwright-display:/home/node/<name>
+Before the fix, the compose file mounted the jobs repo at `/home/node/jobs`: the allowlist check
+(host-side) approved `/home/jack/workspace/jobs/...` since that's the agent's real working
+directory, but the container couldn't find that path (only `/home/node/jobs` existed there) —
+`ENOENT`. Giving the container path instead failed the allowlist check first (`"outside allowed
+roots"`), since the harness didn't recognize `/home/node/...` as anything. Mounting at the same
+absolute path on both sides makes one string satisfy both checks, so upload directly from the
+host path:
 
-# Then in browser_file_upload, use the in-container path:
-/home/node/<name>
+```
+mcp__playwright-golden__browser_file_upload
+  paths: ["/home/jack/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"]
 ```
 
-For a per-job tailored résumé, `<host file>` is `~/workspace/jobs/applications/<id>/resume.pdf`
-(or the named `Resume - <Name> - <Role>.pdf`). For the canonical résumé, it's wherever
-`~/workspace/resume/resume.pdf` resolves on the host. `docker cp` works regardless of whether
-the jobs/resume mounts are active, since it copies through the Docker API rather than the
-mounted filesystem.
+No `docker cp` step needed — the path resolves on both sides of the mount.
+
+**Fallback** if a path is ever rejected (stale allowlist, container recreated with different
+mount targets, etc.): `/tmp/.playwright-mcp-golden/` is always allowed by the MCP server's own
+`--output-dir` and exists purely inside the container, so `docker cp "<host file>"
+playwright-display:/tmp/.playwright-mcp-golden/<name>` then upload from
+`/tmp/.playwright-mcp-golden/<name>` works regardless of mount state. Use this as a diagnostic
+too: if neither the direct host path nor this fallback works, the MCP connection itself (not the
+file path) is the problem.
 
 ### CAPTCHA / Security Challenge Detection
 
