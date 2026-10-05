@@ -67,6 +67,18 @@ Rules learned from a second live Workday "Autofill with Resume" test (2026-10-05
     labels dropped and duplicates removed (case-insensitive), in source order (see
     process_skills_section).
 
+Rules learned from a third live Workday "Autofill with Resume" test (2026-10-05). This docx
+exists only to drive the parser (see the "safe for the end recruiter" note below), so wording
+chosen purely for parser behavior is fine even if it wouldn't be on the real résumé:
+  - The Independent Consultant entry's forced Company (see the "Self-employed" rule further
+    below) is now "Senechal Consulting" instead of "Self-employed": Jack's direction is that this
+    reads as an actual org name to the parser rather than a status word. The title stays
+    "Independent Consultant".
+  - The Education entry's school name "University of North Carolina at Asheville" is rendered as
+    "University of North Carolina Asheville" (no "at"): Workday's School field didn't match the
+    "at Asheville" form against its lookup. See SCHOOL_NAME_OVERRIDES — narrow, exact-match
+    substitution, not a general "at" stripper.
+
 Rules learned from a live Workday "Autofill with Resume" test against the docx this script
 produces (2026-10-05), since the parser only has four fields to assign per entry (Title,
 Company, Location, Dates) and no concept of a non-job section:
@@ -79,7 +91,8 @@ Company, Location, Dates) and no concept of a non-job section:
     Delivery") is stripped before emitting. Workday otherwise splits on the separator and reads
     "Consultant" as the title and "AI-Native Software Delivery" as the company.
   - Narrow rule: when the (pre-strip) title contains "Independent" or "Consultant" (case
-    insensitive), the Company field is forced to "Self-employed" regardless of what the source's
+    insensitive), the Company field is forced to a fixed value (see the third-test note above for
+    its current text, "Senechal Consulting") regardless of what the source's
     "#### Company | Dates | Location" line says. This exists specifically for the
     "Independent Consultant" entry, whose source company text ("Client engagements") is a
     descriptive phrase, not an org name, and Workday parsed it as a second title/company pair.
@@ -153,7 +166,15 @@ KEPT_SECTIONS = ("Summary", "Experience", "Education", "Skills")
 
 TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
+SELF_EMPLOYED_COMPANY = "Senechal Consulting"
 SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
+
+# Narrow, exact-match school-name overrides learned from a live Workday parser test (see module
+# docstring): Workday's School field didn't match "University of North Carolina at Asheville"
+# against its lookup, so it's rendered without "at". Not a general "at"-stripping rule.
+SCHOOL_NAME_OVERRIDES = {
+    "University of North Carolina at Asheville": "University of North Carolina Asheville",
+}
 
 DEGREE_EXPANSIONS = {
     "BA": "Bachelor of Arts",
@@ -329,7 +350,9 @@ def process_job_entries(b, lines, is_education):
             b.emit(title)
         if is_education:
             if len(parts) >= 1 and parts[0]:
-                b.emit(plain(parts[0]))
+                school = plain(parts[0])
+                school = SCHOOL_NAME_OVERRIDES.get(school, school)
+                b.emit(school)
             if len(parts) >= 2 and parts[1]:
                 date = normalize_date(parts[1])
                 if re.fullmatch(r"\d{4}(\s*-\s*\d{4})?", date.strip()):
@@ -343,7 +366,7 @@ def process_job_entries(b, lines, is_education):
                 # Narrow rule: an "Independent"/"Consultant" title's source company text is a
                 # descriptive phrase (e.g. "Client engagements"), not an org name, and Workday
                 # parsed it as a second title/company pair. See module docstring.
-                company = "Self-employed"
+                company = SELF_EMPLOYED_COMPANY
             if company:
                 b.emit(company)
             if location and not is_remote_location(location):
