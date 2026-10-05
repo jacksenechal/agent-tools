@@ -36,10 +36,12 @@ Transform rules (see make_resume_workday.sh / job-search skill docs for the brie
     Institution), Location (if present), then the date range with full month names ("April
     2017", not "Apr 2017"). A source line with only a year (no month) is left as-is — there is
     nothing to expand — and reported by the wrapper script as a heads-up.
-  - A "*Scope: ...*" sub-line is de-italicized and kept as its own plain descriptive paragraph,
-    placed right after the date line and before the bullets. It is not merged into the first
-    bullet (that would alter the bullet's wording); keeping it as a separate, un-styled line
-    satisfies "fold into the description" without touching bullet content.
+  - A "*Scope: ...*" sub-line is de-italicized, has its leading "Scope:" label dropped (the
+    sentence itself is kept so the description starts with real text, not a label), and is kept
+    as its own plain descriptive paragraph, placed right after the date line and before the
+    bullets. It is not merged into the first bullet (that would alter the bullet's wording);
+    keeping it as a separate, un-styled line satisfies "fold into the description" without
+    touching bullet content.
   - One company with multiple roles is only split into separate job entries when the source
     gives each role its own date range. The jobs repo's Kantata entry packs both roles
     ("Internal Infrastructure Platform" / "M-Bridge Integration Platform") as bullets under one
@@ -50,6 +52,35 @@ Transform rules (see make_resume_workday.sh / job-search skill docs for the brie
     since the visible text already reads as a URL. Em dashes and en dashes become plain hyphens.
   - Bullets become plain "- " list items (rendered as real Word bullets by pandoc). No tables,
     columns, or text boxes are introduced.
+
+Rules learned from a live Workday "Autofill with Resume" test against the docx this script
+produces (2026-10-05), since the parser only has four fields to assign per entry (Title,
+Company, Location, Dates) and no concept of a non-job section:
+  - A location line that reads "Remote" (any case, e.g. "Remote (US)", "Remote (part-time)") is
+    OMITTED rather than emitted. Workday's parser mis-reads a bare "Remote" location line as the
+    Job Title of a *new* entry, which shifts that entry's real company/dates/description down one
+    row and appends the real title onto the *previous* entry's description. A real place name
+    ("San Francisco, CA") parses into the Location field correctly, so those are kept.
+  - A job title's " · <subtitle>" suffix (e.g. "Independent Consultant · AI-Native Software
+    Delivery") is stripped before emitting. Workday otherwise splits on the separator and reads
+    "Consultant" as the title and "AI-Native Software Delivery" as the company.
+  - Narrow rule: when the (pre-strip) title contains "Independent" or "Consultant" (case
+    insensitive), the Company field is forced to "Self-employed" regardless of what the source's
+    "#### Company | Dates | Location" line says. This exists specifically for the
+    "Independent Consultant" entry, whose source company text ("Client engagements") is a
+    descriptive phrase, not an org name, and Workday parsed it as a second title/company pair.
+    Keep this narrow: it only fires on consultant/independent titles, not on every entry.
+  - Sections with no per-entry Company/Dates structure are dropped entirely from this render:
+    "Open Source Projects", "Recommendations", and any Experience entry with no parseable
+    "#### Company | Dates | Location" line (e.g. "Earlier Career (2001 - 2014)", which is a prose
+    paragraph, not a job). Workday has no non-job section concept and was parsing these as blank
+    or bled-together job entries. Output section order is fixed: contact block, Summary,
+    Experience, Education, Skills; any other section is silently dropped.
+  - This dropping is safe for the end recruiter: the Workday docx this script produces is used
+    only to drive the platform's autofill step. The agent replaces the uploaded attachment with
+    the full styled PDF (make_resume_pdf.sh output) immediately after, so nothing here is
+    actually lost to the reader — see make_resume_workday.sh's header and the job-search skill's
+    step 6a for the replace-the-attachment step this depends on.
 
 Usage:
     resume_to_workday_md.py <input.md> <output.workday.md>
@@ -99,6 +130,25 @@ def map_section_name(raw):
     if "certif" in low:
         return "Certifications"
     return raw.strip()
+
+
+# Sections kept in the Workday render, and the fixed order they're emitted in. Anything else
+# (e.g. "Open Source Projects", "Recommendations") has no per-entry Company/Dates structure
+# Workday can parse and is dropped. See module docstring.
+KEPT_SECTIONS = ("Summary", "Experience", "Education", "Skills")
+
+TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
+SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
+SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
+
+
+def strip_title_subtitle(title):
+    """Drop a ' · <subtitle>' suffix from a job title (see module docstring)."""
+    return TITLE_SUBTITLE_RE.sub("", title).strip()
+
+
+def is_remote_location(location):
+    return location.strip().lower().startswith("remote")
 
 
 class Builder:
@@ -173,51 +223,62 @@ def process_job_entries(b, lines, is_education):
         entries.append(current)
 
     for entry in entries:
-        title = plain(entry[0][4:].strip())
+        raw_title = plain(entry[0][4:].strip())
+        title = strip_title_subtitle(raw_title)
         rest = entry[1:]
         while rest and rest[0].strip() == "":
             rest.pop(0)
 
         has_h4 = bool(rest) and rest[0].strip().startswith("#### ")
-        if has_h4:
-            h4 = rest[0].strip()[5:].strip()
-            rest.pop(0)
-            parts = [p.strip() for p in h4.split("|")]
-            b.emit(title)
-            if is_education:
-                if len(parts) >= 1 and parts[0]:
-                    b.emit(plain(parts[0]))
-                if len(parts) >= 2 and parts[1]:
-                    date = normalize_date(parts[1])
-                    if re.fullmatch(r"\d{4}(\s*-\s*\d{4})?", date.strip()):
-                        b.note(f"Education date '{date}' has no month in the source; left as-is.")
-                    b.emit(date)
-            else:
-                company = plain(parts[0]) if len(parts) >= 1 else ""
-                date = normalize_date(parts[1]) if len(parts) >= 2 else ""
-                location = plain(parts[2]) if len(parts) >= 3 else ""
-                if company:
-                    b.emit(company)
-                if location:
-                    b.emit(location)
-                if date:
-                    if re.fullmatch(r"\d{4}\s*-\s*\d{4}", date.strip()):
-                        b.note(
-                            f"Job '{title}' at '{company}' has a year-only date range "
-                            f"('{date}') in the source; left as-is (no month to expand)."
-                        )
-                    b.emit(date)
-        else:
-            b.emit(title)
+        if not has_h4:
+            # No parseable "#### Company | Dates | Location" line (e.g. "Earlier Career
+            # (2001 - 2014)", a prose paragraph, not a job). Workday has no way to represent
+            # this as anything but a blank job entry, so drop it. See module docstring.
             b.note(f"Entry '{title}' has no '#### Company | Dates | Location' line; "
-                   f"kept as a title-only entry.")
+                   f"dropped from the Workday render (not a parseable job).")
+            continue
+
+        h4 = rest[0].strip()[5:].strip()
+        rest.pop(0)
+        parts = [p.strip() for p in h4.split("|")]
+        b.emit(title)
+        if is_education:
+            if len(parts) >= 1 and parts[0]:
+                b.emit(plain(parts[0]))
+            if len(parts) >= 2 and parts[1]:
+                date = normalize_date(parts[1])
+                if re.fullmatch(r"\d{4}(\s*-\s*\d{4})?", date.strip()):
+                    b.note(f"Education date '{date}' has no month in the source; left as-is.")
+                b.emit(date)
+        else:
+            company = plain(parts[0]) if len(parts) >= 1 else ""
+            date = normalize_date(parts[1]) if len(parts) >= 2 else ""
+            location = plain(parts[2]) if len(parts) >= 3 else ""
+            if SELF_EMPLOYED_TITLE_RE.search(raw_title):
+                # Narrow rule: an "Independent"/"Consultant" title's source company text is a
+                # descriptive phrase (e.g. "Client engagements"), not an org name, and Workday
+                # parsed it as a second title/company pair. See module docstring.
+                company = "Self-employed"
+            if company:
+                b.emit(company)
+            if location and not is_remote_location(location):
+                b.emit(location)
+            if date:
+                if re.fullmatch(r"\d{4}\s*-\s*\d{4}", date.strip()):
+                    b.note(
+                        f"Job '{title}' at '{company}' has a year-only date range "
+                        f"('{date}') in the source; left as-is (no month to expand)."
+                    )
+                b.emit(date)
 
         while rest and rest[0].strip() == "":
             rest.pop(0)
 
         if rest and re.match(r"^\*\s*Scope\b", rest[0].strip(), re.IGNORECASE):
             scope_line = rest.pop(0)
-            b.emit(plain(scope_line.strip()))
+            scope_text = plain(scope_line.strip())
+            scope_text = SCOPE_LABEL_RE.sub("", scope_text)
+            b.emit(scope_text)
             while rest and rest[0].strip() == "":
                 rest.pop(0)
 
@@ -254,6 +315,11 @@ def convert(text):
     for c in contact:
         b.emit(c)
 
+    # Sections are rendered into per-section builders, then stitched onto the main builder in
+    # the fixed KEPT_SECTIONS order below (the source order of sections in resume.md, e.g.
+    # Education after Skills, doesn't match the Workday output order the brief specifies).
+    rendered_sections = {}
+
     while i < n:
         if lines[i].strip() == "":
             i += 1
@@ -263,7 +329,6 @@ def convert(text):
             i += 1
             continue
         section_name = map_section_name(m.group(1))
-        b.emit(f"# {section_name}")
         i += 1
 
         section_lines = []
@@ -271,10 +336,25 @@ def convert(text):
             section_lines.append(lines[i])
             i += 1
 
+        if section_name not in KEPT_SECTIONS:
+            # Not a job/education/skills section (e.g. "Open Source Projects",
+            # "Recommendations"): no per-entry Company/Dates structure Workday can parse.
+            # Dropped from this render. See module docstring.
+            b.note(f"Section '{section_name}' has no job/dates structure Workday can parse; "
+                   f"dropped from the Workday render.")
+            continue
+
+        sb = Builder()
+        sb.emit(f"# {section_name}")
         if section_name in ("Experience", "Education"):
-            process_job_entries(b, section_lines, is_education=(section_name == "Education"))
+            process_job_entries(sb, section_lines, is_education=(section_name == "Education"))
         else:
-            flush_block_lines(b, section_lines)
+            flush_block_lines(sb, section_lines)
+        rendered_sections[section_name] = sb.blocks
+        b.notes.extend(sb.notes)
+
+    for section_name in KEPT_SECTIONS:
+        b.blocks.extend(rendered_sections.get(section_name, []))
 
     return b.render(), b.notes
 

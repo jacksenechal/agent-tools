@@ -25,14 +25,25 @@
 # markdown into plain, single-column markdown — contact block as one item per line, section
 # headers renamed to standard words and promoted to real headings, each job entry split into
 # separate Job Title / Company / Location / Date lines with full month names, "Scope:"
-# sub-lines de-italicized into a plain line, all bold/italic/link formatting stripped to plain
-# text, em/en dashes to hyphens. See that script's module docstring for the full rule set and
-# the Kantata multi-role caveat. Any source line it couldn't fully normalize (e.g. a year-only
-# date range with no month to expand) is reported to stderr as a NOTE — read those before
-# trusting the output blindly.
+# sub-lines de-italicized into a plain line with the "Scope:" label dropped, all bold/italic/
+# link formatting stripped to plain text, em/en dashes to hyphens. It also drops a "Remote"
+# location line, strips a title's " · <subtitle>" suffix, forces Company to "Self-employed" for
+# an Independent/Consultant title, and drops non-job sections (Open Source Projects,
+# Recommendations, any Experience entry with no parseable Company/Dates line) — all learned from
+# a live Workday "Autofill with Resume" test; see that script's module docstring for the full
+# rule set and the Kantata multi-role caveat. Any source line it couldn't fully normalize (e.g.
+# a year-only date range with no month to expand) is reported to stderr as a NOTE — read those
+# before trusting the output blindly.
 #
-# pandoc then renders that markdown straight to .docx. Markdown headers become real Word
-# Heading styles; nothing here introduces tables, columns, or text boxes.
+# pandoc then renders that markdown straight to .docx, with smart quotes OFF (plain ASCII
+# quotes — Workday's parser prefers them). Markdown headers become real Word Heading styles;
+# nothing here introduces tables, columns, or text boxes.
+#
+# Why it's safe to drop sections here: this docx exists only to drive Workday's autofill, which
+# then populates its own structured fields (work history, education, skills). The agent replaces
+# the uploaded attachment with the full styled PDF (make_resume_pdf.sh output) right after
+# autofill runs, so nothing dropped from this render is actually lost to the recruiter who
+# reads the application. See the job-search skill's step 6a for that replace-the-attachment step.
 #
 # Requires: pandoc, python3.
 
@@ -105,6 +116,6 @@ if [[ "$KEEP_MD" -eq 1 ]]; then
   echo "Wrote: $KEEP_PATH"
 fi
 
-pandoc "$WORKDAY_MD" -o "$OUTPUT" -f markdown+smart -t docx --standalone
+pandoc "$WORKDAY_MD" -o "$OUTPUT" -f markdown-smart -t docx --standalone
 
 echo "Wrote: $OUTPUT"

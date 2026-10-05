@@ -364,10 +364,20 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
     writes `Resume - <Name> - <Role>.docx` beside it. It strips all styling (bold/italic/links,
     section CSS) to plain text, renames section headers to standard words as real Word Heading
     styles, and splits each job's packed heading line into separate Job Title / Company /
-    Location / Date lines with full month names. Read any `NOTE:` lines on stderr (e.g. a
-    year-only date range with no month to expand) before trusting the output. Upload this
-    `.docx` to Workday's autofill, not the PDF; still attach the PDF as the "resume" file where
-    the portal allows a separate upload, since recruiters read that one.
+    Location / Date lines with full month names. It also drops anything Workday's "Autofill
+    with Resume" parser cannot map onto Title/Company/Location/Dates fields: a "Remote" location
+    line (it gets misread as a new entry's title), a title's " · <subtitle>" suffix, and whole
+    non-job sections (Open Source Projects, Recommendations, Earlier Career) — see that script's
+    module docstring for the full, live-tested rule set. Read any `NOTE:` lines on stderr (e.g.
+    a year-only date range with no month to expand) before trusting the output.
+
+    Upload this `.docx` to Workday's autofill, **then immediately replace the uploaded resume
+    attachment with the styled PDF** (the autofill step only reads the docx to populate its own
+    structured fields; once it has, the attachment Workday keeps on file for the recruiter should
+    be the real PDF, not the stripped-down autofill docx). Where the portal allows a separate
+    "resume" upload slot distinct from the one autofill used, attach the PDF there directly
+    instead of re-uploading over the docx. Either way, the recruiter never sees the docx — the
+    sections it drops are not lost to them.
 7. Update tracker: `resume_branch=applications/<id>/resume.md`, `role_branch=role/<name>` (the archetype), `stage=resume_tailored`. Commit the tailored `resume.md` + the named PDF in the jobs repo (no resume-repo commit, no `job/*` branch).
 
 **Stage 3: Prep Application**
