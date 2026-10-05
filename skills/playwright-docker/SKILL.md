@@ -294,15 +294,34 @@ Once set up, use `mcp__playwright__` tools in any skill or task:
 
 ### File uploads
 
-Use `browser_file_upload` with the container-internal path. Two repos are mounted read-only:
+`docker-compose.yml` defines read-only mounts for both the resume repo
+(`/home/pwuser/resume`) and the jobs repo (`${JOBS_REPO_PATH:-~/workspace/jobs}` →
+`/home/pwuser/jobs`), but **verify before relying on either** — `docker inspect
+playwright-display --format '{{json .Mounts}}'` is the ground truth, not this file. As of
+2026-10-05 the running `playwright-display` container only has the resume mount; the jobs
+mount was added to the compose file after the container was last created, so it isn't active
+in the running container (a `docker compose up -d --build`, which recreates the container, would
+pick it up — this has NOT been done as part of this check; do not restart the container as a
+side effect of a file-upload task).
 
-- **Per-job tailored résumé** (the usual upload): the jobs repo is at `/home/pwuser/jobs/`, so
-  upload `/home/pwuser/jobs/applications/<id>/resume.pdf`.
-- **Canonical résumé** (untailored): the resume repo is at `/home/pwuser/resume/`, so
-  `/home/pwuser/resume/resume.pdf`.
+Also, `browser_file_upload` (both `mcp__playwright__` and `mcp__playwright-golden__`) only
+accepts paths under `/tmp/.playwright-mcp-golden` or `/home/node` — **not** `/home/pwuser`,
+even though that's where the repo mounts land and where the container's browser processes run
+as `pwuser`. The working procedure, confirmed live:
 
-(The jobs-repo mount defaults to `~/workspace/jobs`; override with `JOBS_REPO_PATH`. Recreate the
-container after adding the mount for it to take effect.)
+```bash
+# Copy the file in from the host (resolve the real host path first, e.g. from the jobs repo)
+docker cp "<host file>" playwright-display:/home/node/<name>
+
+# Then in browser_file_upload, use the in-container path:
+/home/node/<name>
+```
+
+For a per-job tailored résumé, `<host file>` is `~/workspace/jobs/applications/<id>/resume.pdf`
+(or the named `Resume - <Name> - <Role>.pdf`). For the canonical résumé, it's wherever
+`~/workspace/resume/resume.pdf` resolves on the host. `docker cp` works regardless of whether
+the jobs/resume mounts are active, since it copies through the Docker API rather than the
+mounted filesystem.
 
 ### CAPTCHA / Security Challenge Detection
 
