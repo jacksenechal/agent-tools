@@ -353,6 +353,21 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
    from `profile.md`); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
    print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
 6. `xdg-open "~/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
+6a. **If the application portal is Workday** (the "Autofill with Resume" step), the styled PDF
+    mangles on upload. Render a plain, single-column `.docx` from the same markdown instead:
+    ```bash
+    ~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh \
+      ~/workspace/jobs/applications/<id>/resume.md \
+      --name "Jack Senechal"
+    ```
+    With no explicit output path it reuses the `<Role>` off the sibling PDF from step 5 and
+    writes `Resume - <Name> - <Role>.docx` beside it. It strips all styling (bold/italic/links,
+    section CSS) to plain text, renames section headers to standard words as real Word Heading
+    styles, and splits each job's packed heading line into separate Job Title / Company /
+    Location / Date lines with full month names. Read any `NOTE:` lines on stderr (e.g. a
+    year-only date range with no month to expand) before trusting the output. Upload this
+    `.docx` to Workday's autofill, not the PDF; still attach the PDF as the "resume" file where
+    the portal allows a separate upload, since recruiters read that one.
 7. Update tracker: `resume_branch=applications/<id>/resume.md`, `role_branch=role/<name>` (the archetype), `stage=resume_tailored`. Commit the tailored `resume.md` + the named PDF in the jobs repo (no resume-repo commit, no `job/*` branch).
 
 **Stage 3: Prep Application**
