@@ -49,6 +49,11 @@ conditional on "looks done" or "test mode."
 
 **My Experience**
 - Confirms 6 jobs + education parse correctly from a current `resume.md`.
+- **Fixed 2026-10-05**: Workday has no Summary field, and autofill was dumping the résumé's
+  Summary text into the first job's (consulting entry's) Role Description. `resume_to_workday_md.py`
+  now drops the Summary section from the Workday render entirely by default (`--keep-summary` to
+  restore it for a tenant retest). If Role Description ever starts with Summary-sounding prose
+  instead of the job's own scope/bullets, re-render with a current script version.
 - Known residue: the consulting entry's Job Title parses as "Consultant" — fix to "Independent
   Consultant." Its Company currently renders correctly as **"Senechal Consulting"**
   (`SELF_EMPLOYED_COMPANY` in `resume_to_workday_md.py`). "Freelance" was tried as Jack's

@@ -6,7 +6,7 @@
 #
 # Usage:
 #   make_resume_workday.sh <input.md> [output.docx] [--name "..."] [--keep-md] \
-#       [--skills-style flat|categorized]
+#       [--skills-style flat|categorized] [--keep-summary]
 #
 # This script is general-purpose and contains NO personal details. The applicant name must
 # be supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var
@@ -27,6 +27,10 @@
 #                   wants). "categorized": render the source's own categorized "Label: a, b, c"
 #                   lines as plain paragraphs (no Word list, no bold), each category kept on its
 #                   own line. See resume_to_workday_md.py's process_skills_section.
+#   --keep-summary -> emit the Summary section as its own "# Summary" block. OFF by default:
+#                   Workday has no Summary field and was bleeding that text into the first job's
+#                   Role Description (confirmed on a live Autofill test, 2026-10-05). Only pass
+#                   this to re-test a tenant where that might behave differently.
 #
 # Transform: resume_to_workday_md.py (beside this script) rewrites the house-style résumé
 # markdown into plain, single-column markdown — contact block as one item per line, section
@@ -64,12 +68,14 @@ INPUT=""
 OUTPUT=""
 KEEP_MD=0
 SKILLS_STYLE="flat"
+KEEP_SUMMARY=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name)     NAME="$2"; shift 2 ;;
     --keep-md)  KEEP_MD=1; shift ;;
     --skills-style) SKILLS_STYLE="$2"; shift 2 ;;
+    --keep-summary) KEEP_SUMMARY=1; shift ;;
     -h|--help)  grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)
       if [[ -z "$INPUT" ]]; then INPUT="$1"
@@ -117,7 +123,11 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 WORKDAY_MD="$TMP/out.workday.md"
-python3 "$PY_HELPER" "$INPUT" "$WORKDAY_MD" --skills-style "$SKILLS_STYLE"
+PY_ARGS=("$INPUT" "$WORKDAY_MD" --skills-style "$SKILLS_STYLE")
+if [[ "$KEEP_SUMMARY" -eq 1 ]]; then
+  PY_ARGS+=(--keep-summary)
+fi
+python3 "$PY_HELPER" "${PY_ARGS[@]}"
 
 if [[ "$KEEP_MD" -eq 1 ]]; then
   KEEP_PATH="${OUTPUT%.*}.workday.md"

@@ -366,10 +366,12 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
     styles, and splits each job's packed heading line into separate Job Title / Company /
     Location / Date lines with full month names. It also drops anything Workday's "Autofill
     with Resume" parser cannot map onto Title/Company/Location/Dates fields: a "Remote" location
-    line (it gets misread as a new entry's title), a title's " · <subtitle>" suffix, and whole
-    non-job sections (Open Source Projects, Recommendations, Earlier Career) — see that script's
-    module docstring for the full, live-tested rule set. Read any `NOTE:` lines on stderr (e.g.
-    a year-only date range with no month to expand) before trusting the output.
+    line (it gets misread as a new entry's title), a title's " · <subtitle>" suffix, the Summary
+    section entirely (Workday has no Summary field; it was bleeding into the first job's Role
+    Description — pass `--keep-summary` to restore it for a tenant retest), and whole non-job
+    sections (Open Source Projects, Recommendations, Earlier Career) — see that script's module
+    docstring for the full, live-tested rule set. Read any `NOTE:` lines on stderr (e.g. a
+    year-only date range with no month to expand) before trusting the output.
 
     Upload this `.docx` to Workday's autofill, **then immediately replace the uploaded resume
     attachment with the styled PDF** (the autofill step only reads the docx to populate its own

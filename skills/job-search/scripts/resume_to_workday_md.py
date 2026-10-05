@@ -114,8 +114,16 @@ Company, Location, Dates) and no concept of a non-job section:
     actually lost to the reader — see make_resume_workday.sh's header and the job-search skill's
     step 6a for the replace-the-attachment step this depends on.
 
+Bug fix learned from a live Workday "Autofill with Resume" test against the Salesforce Senior
+Engineering Manager, Observability docx (2026-10-05): Workday's parser has no Summary field, so
+it dumped the Summary section's text into the first job entry's Role Description instead. The
+Summary section is now DROPPED from the Workday render by default (removed from KEPT_SECTIONS).
+Pass --keep-summary to restore the old behavior (emit it as its own "# Summary" block) for a
+tenant where that turns out to behave differently; test before relying on it.
+
 Usage:
-    resume_to_workday_md.py <input.md> <output.workday.md>
+    resume_to_workday_md.py <input.md> <output.workday.md> [--skills-style flat|categorized] \
+        [--keep-summary]
 """
 
 import re
@@ -173,8 +181,10 @@ def map_section_name(raw):
 
 # Sections kept in the Workday render, and the fixed order they're emitted in. Anything else
 # (e.g. "Open Source Projects", "Recommendations") has no per-entry Company/Dates structure
-# Workday can parse and is dropped. See module docstring.
-KEPT_SECTIONS = ("Summary", "Experience", "Education", "Skills")
+# Workday can parse and is dropped. See module docstring. Summary is dropped by default (Workday
+# has no Summary field and was bleeding its text into the first job's Role Description); pass
+# --keep-summary / keep_summary=True to restore it.
+KEPT_SECTIONS_BASE = ("Experience", "Education", "Skills")
 
 TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
@@ -427,7 +437,8 @@ def process_job_entries(b, lines, is_education):
         flush_block_lines(b, rest)
 
 
-def convert(text, skills_style="flat"):
+def convert(text, skills_style="flat", keep_summary=False):
+    kept_sections = ("Summary",) + KEPT_SECTIONS_BASE if keep_summary else KEPT_SECTIONS_BASE
     b = Builder()
     lines = text.split("\n")
     n = len(lines)
@@ -478,7 +489,7 @@ def convert(text, skills_style="flat"):
             section_lines.append(lines[i])
             i += 1
 
-        if section_name not in KEPT_SECTIONS:
+        if section_name not in kept_sections:
             # Not a job/education/skills section (e.g. "Open Source Projects",
             # "Recommendations"): no per-entry Company/Dates structure Workday can parse.
             # Dropped from this render. See module docstring.
@@ -497,7 +508,7 @@ def convert(text, skills_style="flat"):
         rendered_sections[section_name] = sb.blocks
         b.notes.extend(sb.notes)
 
-    for section_name in KEPT_SECTIONS:
+    for section_name in kept_sections:
         b.blocks.extend(rendered_sections.get(section_name, []))
 
     return b.render(), b.notes
@@ -506,6 +517,9 @@ def convert(text, skills_style="flat"):
 def main():
     args = sys.argv[1:]
     skills_style = "flat"
+    keep_summary = "--keep-summary" in args
+    if keep_summary:
+        args = [a for a in args if a != "--keep-summary"]
     if "--skills-style" in args:
         idx = args.index("--skills-style")
         try:
@@ -520,11 +534,11 @@ def main():
         sys.exit(1)
     if len(args) != 2:
         print("Usage: resume_to_workday_md.py <input.md> <output.workday.md> "
-              "[--skills-style flat|categorized]", file=sys.stderr)
+              "[--skills-style flat|categorized] [--keep-summary]", file=sys.stderr)
         sys.exit(1)
     with open(args[0], encoding="utf-8") as f:
         text = f.read()
-    out, notes = convert(text, skills_style=skills_style)
+    out, notes = convert(text, skills_style=skills_style, keep_summary=keep_summary)
     with open(args[1], "w", encoding="utf-8") as f:
         f.write(out)
     for note in notes:
