@@ -74,8 +74,11 @@ chosen purely for parser behavior is fine even if it wouldn't be on the real ré
     below) is now "Senechal Consulting" instead of "Self-employed": Jack's direction is that this
     reads as an actual org name to the parser rather than a status word. The title stays
     "Independent Consultant". Updated again 2026-10-05: forced Company changed to "Freelance"
-    (Jack's preferred value; falls back to "Senechal Consulting" if Workday drops or mis-parses
-    "Freelance").
+    (Jack's preferred value), then reverted back to "Senechal Consulting" the same day: a live
+    Workday "Autofill with Resume" test against this script's docx output (Early Warning tenant)
+    came back with the Company field blank for "Freelance" (confirming the earlier plain-PDF
+    result), while "Senechal Consulting" is confirmed working. If Jack wants to retry "Freelance"
+    on a different tenant, test it first rather than assuming it is this tenant-specific.
   - The Education entry's school name "University of North Carolina at Asheville" is rendered as
     "University of North Carolina Asheville" (no "at"): Workday's School field didn't match the
     "at Asheville" form against its lookup. See SCHOOL_NAME_OVERRIDES — narrow, exact-match
@@ -137,6 +140,13 @@ def plain(text):
     text = re.sub(r"\*([^*]+)\*", r"\1", text)                 # *italic*
     text = re.sub(r"(?<!\w)_([^_]+)_(?!\w)", r"\1", text)      # _italic_
     text = text.replace("—", "-").replace("–", "-")  # em/en dash -> hyphen
+    # Workday's Role Description (and likely other free-text) fields reject these characters
+    # outright ("Contains illegal characters < > [ ] " { } \"), confirmed by a live "Save and
+    # Continue" validation error on the Early Warning tenant (2026-10-05). Smart/curly quotes
+    # pass; it is specifically straight " and the bracket/brace/backslash set. Drop straight
+    # double quotes and backslashes; bare < > [ ] { } shouldn't appear in prose bullets but are
+    # stripped too so a stray one never silently blocks Save and Continue downstream.
+    text = re.sub(r'["\\<>\[\]{}]', "", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -168,7 +178,7 @@ KEPT_SECTIONS = ("Summary", "Experience", "Education", "Skills")
 
 TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
-SELF_EMPLOYED_COMPANY = "Freelance"
+SELF_EMPLOYED_COMPANY = "Senechal Consulting"
 SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
 
 # Narrow, exact-match school-name overrides learned from a live Workday parser test (see module

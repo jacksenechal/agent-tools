@@ -1,0 +1,135 @@
+# Workday Application Playbook
+
+Validated end-to-end 2026-10-05 against the Early Warning Workday tenant (test posting,
+stopped at Review, never submitted). Packed runbook, not a session log — see `make_resume_workday.sh`'s
+module docstring for the full parser-quirk history.
+
+## Stop-at-Review rule
+
+**NEVER click Submit.** Every run — test or real — stops at the Review step. Fill everything,
+leave the draft, tell the user it's ready. The user clicks Submit. This is absolute; it is not
+conditional on "looks done" or "test mode."
+
+## Setup
+
+- Golden `playwright-golden` MCP session, signed in to the target tenant. Confirm with a
+  `browser_snapshot` before starting — if signed out, stop and tell the user (they sign in via
+  `http://localhost:6080/vnc.html`; never enter credentials yourself).
+- File uploads: see `playwright-docker` skill's "File uploads" section for the current allowed
+  path. As of 2026-10-05 the jobs and resume repos are bind-mounted at their identical host
+  paths, so `browser_file_upload` works directly from `~/workspace/jobs/...` and
+  `~/workspace/resume/...` paths. If a path gets rejected as "outside allowed roots" or comes
+  back `ENOENT`, re-read that section before improvising — it explains which of the two layers
+  (harness allowlist vs. container filesystem) is actually failing, and the first fallback is
+  `/tmp/.playwright-mcp-golden/` (always allowed; `docker cp` a file there, upload from there).
+
+## Starting a fresh application
+
+1. Go to Candidate Home. If a draft already exists for the target req, delete it first
+   (`Related Actions` → `Delete Application` → confirm) **unless the user asked to continue an
+   existing draft**. A reopened draft ("Continue Application") skips the Autofill step entirely —
+   see "Recovery" below.
+2. Navigate to the job posting, click **Apply**, then **Autofill with Resume** (not "Apply
+   Manually" or "Use My Last Application" — those skip the parse this playbook depends on).
+3. Render the parser-shaped `.docx`:
+   `~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh <resume.md> <out.docx> --name "Jack Senechal"`
+4. Upload it on the Autofill screen, click **Continue**. Autofill only runs once per fresh
+   application — see "Recovery" for how to redo it within the same session.
+
+## Per-page checklist
+
+**My Information**
+- Legal name parses to the *preferred* name in both Legal and Preferred fields (e.g. both show
+  "Jack"). Fix the Legal First Name back to "John" — tick stays on "I have a preferred name."
+- Phone defaults to whatever's in the docx (may be the public Google Voice number). Overwrite
+  with the cell per `profile.md`'s phone policy — application forms always get the cell.
+- Address Line 1 and Postal Code are often left blank by autofill; fill from `profile.md`.
+- "How Did You Hear About Us": the employer's own corporate-site option, unless the tracker row
+  has a confirmed referral (then "Referral"/"Employee Referral").
+
+**My Experience**
+- Confirms 6 jobs + education parse correctly from a current `resume.md`.
+- Known residue: the consulting entry's Job Title parses as "Consultant" — fix to "Independent
+  Consultant." Its Company currently renders correctly as **"Senechal Consulting"**
+  (`SELF_EMPLOYED_COMPANY` in `resume_to_workday_md.py`). "Freelance" was tried as Jack's
+  preferred value 2026-10-05 and came back with Company **blank** on this tenant (confirming an
+  earlier plain-PDF test); reverted. If the preference comes up again, test it fresh — don't
+  assume it's fixed without a live check.
+- **New finding (2026-10-05): Workday's free-text fields (confirmed on Role Description) reject
+  straight `" \ < > [ ] { }` characters outright** ("Contains illegal characters...") and block
+  Save and Continue with a field-level error until fixed. `resume_to_workday_md.py`'s `plain()`
+  now strips these automatically, so a fresh render is clean — but if you ever hand-edit text
+  into one of these fields (or paste from elsewhere), re-check for straight quotes before saving.
+- Skills: autofill **never** populates this field, and the type-ahead picker itself may be
+  non-functional on a given tenant — on Early Warning it returned "No Items." for every query
+  tried, including common terms (Python, Kubernetes, Leadership, Java) and even a bare single
+  letter ("a"). Try two or three obvious terms from the résumé's Skills section; if every one
+  comes back "No Items.", the picker is broken on this tenant, not the terms — leave Skills
+  blank and move on rather than burning turns on more variations.
+- Swap the attachment: delete the autofill `.docx`, upload the styled, named PDF
+  (`applications/<id>/Resume - <Name> - <Role>.pdf`) in its place. The docx only existed to
+  drive the parse; the recruiter should see the real résumé.
+- Minor field: there isn't one. A "minor in X" from the résumé has nowhere to go; drop it
+  silently (it's already folded into the Field of Study handling upstream).
+- School name: "University of North Carolina Asheville" (no "at") — a parser quirk, not a
+  factual claim change; see `SCHOOL_NAME_OVERRIDES` in the script.
+
+**Application Questions**
+- Answer everything `profile.md` covers directly (work authorization, prior-employer check →
+  No, age 18+ → Yes, relatives-at-company → No, employment type → check "Full time").
+- State-of-residence question: match the address state.
+- Fields `profile.md` doesn't cover but Workday **requires** to proceed past this page (seen on
+  this tenant: desired start date, "does the posted salary range align," willing to relocate
+  without assistance): these are genuinely Jack's calls. On a real application, stop here and
+  ask rather than guessing. On a *test* run whose only purpose is validating the flow, a
+  clearly-labeled placeholder is fine to get to Review — call it out plainly in the report, don't
+  let it read as a real answer.
+- Optional fields (languages spoken, licenses/certifications, willing to travel): leave blank
+  unless `profile.md` has an answer; these are rarely load-bearing.
+
+**Voluntary Disclosures**
+- EEO block maps directly from `profile.md`: gender, ethnicity (the "Hispanic or Latino?"
+  sub-question is implied by "White (Not Hispanic or Latino)" — answer No), veteran status.
+- Check the terms-and-conditions consent box; it's required to proceed.
+
+**Self Identify**
+- Form CC-305 (disability self-ID). `profile.md` now carries Jack's standing answer: **"No, I do
+  not have a disability."** Use that checkbox, not "I do not want to answer" — Jack corrected
+  this mid-run on 2026-10-05, so treat it as settled unless told otherwise.
+- Name and Date fields on this form are required despite no visible asterisk until the
+  validation error fires — fill Name (legal name) and today's date.
+- The two disability-answer checkboxes besides the one you want are `disabled` while another is
+  checked; click the currently-checked one to uncheck it, which re-enables the others, then
+  click the one you want.
+
+**Review**
+- Read every section back. Confirm the Company fix, the attachment swap, and the My Experience
+  text sanitization landed (illegal-character errors surface retroactively on Save and Continue,
+  not live as you type).
+- Stop. Do not click Submit.
+
+## Recovery
+
+- **Within the same session, before saving My Experience**: the in-form **Back** button returns
+  to the Autofill screen; re-uploading a `.docx` there replaces the previous parse cleanly. Used
+  this 2026-10-05 to fix a wrong disability answer discovered after reaching Review — Back
+  through each step to Self Identify, no "Discard Application?" prompt as long as you're backing
+  up within the still-unsaved draft.
+- **Reopening a saved draft** ("Continue Application" from Candidate Home) skips Autofill
+  entirely — you land straight on My Information with whatever was last saved. Hitting Back from
+  there raises "Discard Application?" — a real confirm dialog, not a no-op.
+- **Starting over**: delete the draft from Candidate Home (`Related Actions` → `Delete
+  Application` → confirm) and begin again from Apply.
+
+## Gotchas index (quick reference)
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Legal first name shows preferred name | Autofill doesn't distinguish legal/preferred | Manually correct Legal First Name |
+| Phone shows public number | docx carries whatever `resume.md` lists | Overwrite with cell from `profile.md` |
+| Company blank for consulting entry | "Freelance" doesn't survive Workday's parse on this tenant | Use "Senechal Consulting" (current default) |
+| Job title "Consultant" | Parser drops "Independent" | Manually fix to "Independent Consultant" |
+| Save and Continue blocked, "illegal characters" error | Straight `" \ < > [ ] { }` in a free-text field | `resume_to_workday_md.py`'s `plain()` strips these now; re-render if editing by hand |
+| Skills type-ahead returns "No Items." for everything | Tenant's skill-cloud lookup may be non-functional | Try 2-3 terms, then leave blank — don't loop |
+| Required field has no visible `*` until you try to save | Asterisk sometimes only renders after a validation pass | Expect this on Self Identify's Name/Date |
+| `browser_file_upload` says "outside allowed roots" or `ENOENT` | Harness-allowlist vs. container-filesystem path mismatch | See `playwright-docker` skill's "File uploads" section |

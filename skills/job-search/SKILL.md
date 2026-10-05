@@ -378,6 +378,9 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
     "resume" upload slot distinct from the one autofill used, attach the PDF there directly
     instead of re-uploading over the docx. Either way, the recruiter never sees the docx — the
     sections it drops are not lost to them.
+
+    Full per-page checklist, gotchas, and the stop-at-Review rule for Workday application
+    submission: `references/workday-playbook.md` (validated end-to-end 2026-10-05).
 7. Update tracker: `resume_branch=applications/<id>/resume.md`, `role_branch=role/<name>` (the archetype), `stage=resume_tailored`. Commit the tailored `resume.md` + the named PDF in the jobs repo (no resume-repo commit, no `job/*` branch).
 
 **Stage 3: Prep Application**
@@ -998,7 +1001,8 @@ runtime (flags / env / read from the private profile) instead.
     blockquote indentation, no hard-wrapped lines inside the draft. See Stage 4.
 12. **Never submit applications automatically.** Fill everything, then stop. User clicks Submit.
     This holds for the unattended orchestrator loop too: its authority ends at discovery,
-    research, tracker state, and saved-list bookkeeping.
+    research, tracker state, and saved-list bookkeeping. For Workday specifically, this is the
+    stop-at-Review rule in `references/workday-playbook.md`.
 13. **Active processes are hands-off.** No sub-command, timer, or agent changes the stage of a
     row at `interviewing` or `offer`. Liveness, geography, and coherence verdicts write notes
     and columns on those rows and surface them; only the user moves them. Rows at `discovered`
