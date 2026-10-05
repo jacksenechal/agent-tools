@@ -121,9 +121,28 @@ Summary section is now DROPPED from the Workday render by default (removed from 
 Pass --keep-summary to restore the old behavior (emit it as its own "# Summary" block) for a
 tenant where that turns out to behave differently; test before relying on it.
 
+Findings from manual autofill testing on the Salesforce docx (2026-10-05): Workday's Websites
+extractor reads hyperlink *targets* in the uploaded docx, and the per-job docx had none (every
+markdown link was stripped to its plain visible text). Also the docx carried the Google Voice
+number, which then has to be manually overwritten with the cell on every application. Three
+fixes, none hardcoding personal details (values are passed by the caller, e.g. from
+~/workspace/jobs/profile.md):
+  - Contact lines that are markdown links (`[text](url)`) or `<url>` autolinks are now emitted
+    as real markdown links with the visible text set to the URL itself, so pandoc renders a real
+    docx hyperlink and Workday's Websites field has something to extract. See
+    contact_line_to_markdown.
+  - --phone "..." overrides the contact block's Phone line (adds one if none exists). This only
+    affects this autofill-only docx; the styled PDF attachment (which carries the public number)
+    replaces it right after autofill, per the module's existing "safe for the end recruiter" note.
+  - --edu-start YEAR prepends "YEAR - " to the Education entry's date line when it isn't already
+    a "YEAR - YEAR" range, turning e.g. "May 2003" into "1998 - May 2003" so Workday's Education
+    "From" year field has something to parse.
+  - --link URL (repeatable) appends an extra contact-block hyperlink line, e.g. for a personal
+    website the source résumé doesn't otherwise link.
+
 Usage:
     resume_to_workday_md.py <input.md> <output.workday.md> [--skills-style flat|categorized] \
-        [--keep-summary]
+        [--keep-summary] [--phone PHONE] [--edu-start YEAR] [--link URL ...]
 """
 
 import re
@@ -162,6 +181,65 @@ def plain(text):
 def normalize_date(s):
     s = plain(s)
     return MONTH_RE.sub(lambda m: MONTHS[m.group(1)], s)
+
+
+# Workday's LinkedIn field match requires the "www." form (bare "linkedin.com" was confirmed
+# not to match on a live test, 2026-10-05); normalize both the hyperlink target and visible
+# text so neither silently keeps the bare form.
+LINKEDIN_BARE_RE = re.compile(r"^(https?://)linkedin\.com(/.*)?$", re.IGNORECASE)
+
+
+def normalize_url(url):
+    m = LINKEDIN_BARE_RE.match(url.strip())
+    if m:
+        return f"{m.group(1)}www.linkedin.com{m.group(2) or ''}"
+    return url
+
+
+LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+AUTOLINK_RE = re.compile(r"<(https?://[^<>\s]+)>")
+
+
+def contact_line_to_markdown(line):
+    """Process one contact-block line. A markdown link or <url> autolink is preserved as a
+    real hyperlink whose visible text is the URL itself (normalized, e.g. LinkedIn's "www."
+    requirement) so pandoc renders a real docx hyperlink and Workday's Websites extractor,
+    which reads hyperlink targets, has something to find. Everything else goes through plain()
+    as before."""
+    m = LINK_RE.search(line)
+    if m:
+        url = normalize_url(m.group(2))
+        label = plain(line[:m.start()])
+        trailing = plain(line[m.end():])
+        label = f"{label} " if label else ""
+        trailing = f" {trailing}" if trailing else ""
+        return f"{label}[{url}]({url}){trailing}".strip()
+    m2 = AUTOLINK_RE.search(line)
+    if m2:
+        url = normalize_url(m2.group(1))
+        label = plain(line[:m2.start()])
+        trailing = plain(line[m2.end():])
+        label = f"{label} " if label else ""
+        trailing = f" {trailing}" if trailing else ""
+        return f"{label}[{url}]({url}){trailing}".strip()
+    return plain(line)
+
+
+def apply_phone_override(contact, phone):
+    """Replace the contact block's Phone line with `phone`, or append one if none exists."""
+    if phone is None:
+        return contact
+    new_contact = []
+    replaced = False
+    for c in contact:
+        if re.match(r"(?i)^phone\s*:", c):
+            new_contact.append(f"Phone: {phone}")
+            replaced = True
+        else:
+            new_contact.append(c)
+    if not replaced:
+        new_contact.append(f"Phone: {phone}")
+    return new_contact
 
 
 def map_section_name(raw):
@@ -347,7 +425,7 @@ def process_skills_section(b, lines, style="flat"):
         b.emit(", ".join(items))
 
 
-def process_job_entries(b, lines, is_education):
+def process_job_entries(b, lines, is_education, edu_start=None):
     entries = []
     current = None
     for ln in lines:
@@ -397,7 +475,9 @@ def process_job_entries(b, lines, is_education):
                 b.emit(school)
             if len(parts) >= 2 and parts[1]:
                 date = normalize_date(parts[1])
-                if re.fullmatch(r"\d{4}(\s*-\s*\d{4})?", date.strip()):
+                if edu_start and not re.match(r"^\d{4}\s*-", date.strip()):
+                    date = f"{edu_start} - {date}"
+                elif re.fullmatch(r"\d{4}(\s*-\s*\d{4})?", date.strip()):
                     b.note(f"Education date '{date}' has no month in the source; left as-is.")
                 b.emit(date)
         else:
@@ -437,7 +517,7 @@ def process_job_entries(b, lines, is_education):
         flush_block_lines(b, rest)
 
 
-def convert(text, skills_style="flat", keep_summary=False):
+def convert(text, skills_style="flat", keep_summary=False, phone=None, edu_start=None, links=None):
     kept_sections = ("Summary",) + KEPT_SECTIONS_BASE if keep_summary else KEPT_SECTIONS_BASE
     b = Builder()
     lines = text.split("\n")
@@ -462,8 +542,13 @@ def convert(text, skills_style="flat", keep_summary=False):
         for part in re.split(r"<br\s*/?>", lines[i]):
             part = part.strip()
             if part:
-                contact.append(plain(part))
+                contact.append(contact_line_to_markdown(part))
         i += 1
+
+    contact = apply_phone_override(contact, phone)
+    for url in (links or []):
+        url = normalize_url(url)
+        contact.append(f"[{url}]({url})")
 
     for c in contact:
         b.emit(c)
@@ -500,7 +585,10 @@ def convert(text, skills_style="flat", keep_summary=False):
         sb = Builder()
         sb.emit(f"# {section_name}")
         if section_name in ("Experience", "Education"):
-            process_job_entries(sb, section_lines, is_education=(section_name == "Education"))
+            process_job_entries(
+                sb, section_lines, is_education=(section_name == "Education"),
+                edu_start=edu_start if section_name == "Education" else None,
+            )
         elif section_name == "Skills":
             process_skills_section(sb, section_lines, style=skills_style)
         else:
@@ -517,6 +605,9 @@ def convert(text, skills_style="flat", keep_summary=False):
 def main():
     args = sys.argv[1:]
     skills_style = "flat"
+    phone = None
+    edu_start = None
+    links = []
     keep_summary = "--keep-summary" in args
     if keep_summary:
         args = [a for a in args if a != "--keep-summary"]
@@ -528,17 +619,45 @@ def main():
             print("Error: --skills-style requires a value (flat|categorized)", file=sys.stderr)
             sys.exit(1)
         del args[idx:idx + 2]
+    if "--phone" in args:
+        idx = args.index("--phone")
+        try:
+            phone = args[idx + 1]
+        except IndexError:
+            print("Error: --phone requires a value", file=sys.stderr)
+            sys.exit(1)
+        del args[idx:idx + 2]
+    if "--edu-start" in args:
+        idx = args.index("--edu-start")
+        try:
+            edu_start = args[idx + 1]
+        except IndexError:
+            print("Error: --edu-start requires a value", file=sys.stderr)
+            sys.exit(1)
+        del args[idx:idx + 2]
+    while "--link" in args:
+        idx = args.index("--link")
+        try:
+            links.append(args[idx + 1])
+        except IndexError:
+            print("Error: --link requires a value", file=sys.stderr)
+            sys.exit(1)
+        del args[idx:idx + 2]
     if skills_style not in ("flat", "categorized"):
         print(f"Error: --skills-style must be 'flat' or 'categorized', got '{skills_style}'",
               file=sys.stderr)
         sys.exit(1)
     if len(args) != 2:
         print("Usage: resume_to_workday_md.py <input.md> <output.workday.md> "
-              "[--skills-style flat|categorized] [--keep-summary]", file=sys.stderr)
+              "[--skills-style flat|categorized] [--keep-summary] [--phone PHONE] "
+              "[--edu-start YEAR] [--link URL ...]", file=sys.stderr)
         sys.exit(1)
     with open(args[0], encoding="utf-8") as f:
         text = f.read()
-    out, notes = convert(text, skills_style=skills_style, keep_summary=keep_summary)
+    out, notes = convert(
+        text, skills_style=skills_style, keep_summary=keep_summary,
+        phone=phone, edu_start=edu_start, links=links,
+    )
     with open(args[1], "w", encoding="utf-8") as f:
         f.write(out)
     for note in notes:

@@ -354,11 +354,15 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
    print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
 6. `xdg-open "~/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
 6a. **If the application portal is Workday** (the "Autofill with Resume" step), the styled PDF
-    mangles on upload. Render a plain, single-column `.docx` from the same markdown instead:
+    mangles on upload. Render a plain, single-column `.docx` from the same markdown instead.
+    Standard invocation (values read from `~/workspace/jobs/profile.md`):
     ```bash
     ~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh \
       ~/workspace/jobs/applications/<id>/resume.md \
-      --name "Jack Senechal"
+      --name "Jack Senechal" \
+      --phone "<cell from profile.md>" \
+      --edu-start <year from profile.md> \
+      --link <website from profile.md>
     ```
     With no explicit output path it reuses the `<Role>` off the sibling PDF from step 5 and
     writes `Resume - <Name> - <Role>.docx` beside it. It strips all styling (bold/italic/links,
@@ -372,6 +376,15 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
     sections (Open Source Projects, Recommendations, Earlier Career) — see that script's module
     docstring for the full, live-tested rule set. Read any `NOTE:` lines on stderr (e.g. a
     year-only date range with no month to expand) before trusting the output.
+
+    `--phone`, `--edu-start`, and `--link` exist because Workday's extractors read the *docx
+    itself*, not just the autofill form state: the Websites field reads hyperlink targets (the
+    source résumé's contact links were being stripped to plain text, leaving Websites empty),
+    the Education "From" year has nothing to parse without a start year, and the contact Phone
+    line otherwise carries the public Google Voice number instead of the cell. Contact URLs
+    (GitHub, LinkedIn, `--link`) are rendered as real docx hyperlinks with the visible text set
+    to the URL; LinkedIn is normalized to the `www.` form (bare `linkedin.com` doesn't match
+    Workday's field).
 
     Upload this `.docx` to Workday's autofill, **then immediately replace the uploaded resume
     attachment with the styled PDF** (the autofill step only reads the docx to populate its own

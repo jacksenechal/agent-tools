@@ -31,8 +31,15 @@ conditional on "looks done" or "test mode."
    see "Recovery" below.
 2. Navigate to the job posting, click **Apply**, then **Autofill with Resume** (not "Apply
    Manually" or "Use My Last Application" — those skip the parse this playbook depends on).
-3. Render the parser-shaped `.docx`:
-   `~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh <resume.md> <out.docx> --name "Jack Senechal"`
+3. Render the parser-shaped `.docx`, passing the cell phone, education start year, and website
+   link from `profile.md` so the docx doesn't need manual fixing after upload:
+   ```bash
+   ~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh <resume.md> \
+     --name "Jack Senechal" \
+     --phone "<cell from profile.md>" \
+     --edu-start <year from profile.md> \
+     --link <website from profile.md>
+   ```
 4. Upload it on the Autofill screen, click **Continue**. Autofill only runs once per fresh
    application — see "Recovery" for how to redo it within the same session.
 
@@ -41,8 +48,10 @@ conditional on "looks done" or "test mode."
 **My Information**
 - Legal name parses to the *preferred* name in both Legal and Preferred fields (e.g. both show
   "Jack"). Fix the Legal First Name back to "John" — tick stays on "I have a preferred name."
-- Phone defaults to whatever's in the docx (may be the public Google Voice number). Overwrite
-  with the cell per `profile.md`'s phone policy — application forms always get the cell.
+- Phone defaults to whatever's in the docx. As of 2026-10-05 the standard render invocation
+  (step 3) passes `--phone` with the cell already, so this should come in correct; if it still
+  shows the public Google Voice number (e.g. the docx was rendered without `--phone`), overwrite
+  with the cell per `profile.md`'s phone policy.
 - Address Line 1 and Postal Code are often left blank by autofill; fill from `profile.md`.
 - "How Did You Hear About Us": the employer's own corporate-site option, unless the tracker row
   has a confirmed referral (then "Referral"/"Employee Referral").
@@ -89,6 +98,11 @@ conditional on "looks done" or "test mode."
   silently (it's already folded into the Field of Study handling upstream).
 - School name: "University of North Carolina Asheville" (no "at") — a parser quirk, not a
   factual claim change; see `SCHOOL_NAME_OVERRIDES` in the script.
+- **Websites** and **Education "From" year**: as of 2026-10-05 the standard render invocation
+  (step 3) emits contact URLs as real docx hyperlinks and prepends the education start year, so
+  both fields should autofill. If either is still blank after autofill, the docx was likely
+  rendered without `--link`/`--edu-start` — fill them manually from `profile.md` (website,
+  and 1998 as the education start year) rather than leaving them empty.
 
 **Application Questions**
 - Answer everything `profile.md` covers directly (work authorization, prior-employer check →
@@ -150,3 +164,5 @@ conditional on "looks done" or "test mode."
 | Skills chip field shows ~15 "(Suggested)" skills, caps at 10 | Tenant infers skills from uploaded résumé text (seen on Salesforce) | Prune to the 10 most relevant to the posting |
 | Required field has no visible `*` until you try to save | Asterisk sometimes only renders after a validation pass | Expect this on Self Identify's Name/Date |
 | `browser_file_upload` says "outside allowed roots" or `ENOENT` | Harness-allowlist vs. container-filesystem path mismatch | See `playwright-docker` skill's "File uploads" section |
+| Websites field empty after autofill | docx had no hyperlinks (markdown links were stripped to plain text) or LinkedIn URL lacked "www." | Render with `--link`/profile.md's website; LinkedIn is auto-normalized to `www.linkedin.com` by `resume_to_workday_md.py` |
+| Education "From" year blank | No start year in the source date line (e.g. "May 2003" alone) | Render with `--edu-start <year>` |
