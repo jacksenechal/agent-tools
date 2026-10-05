@@ -53,6 +53,20 @@ Transform rules (see make_resume_workday.sh / job-search skill docs for the brie
   - Bullets become plain "- " list items (rendered as real Word bullets by pandoc). No tables,
     columns, or text boxes are introduced.
 
+Rules learned from a second live Workday "Autofill with Resume" test (2026-10-05):
+  - Workday's Education "Degree" dropdown only matches full degree names ("Bachelor of Arts"),
+    not house-style abbreviations ("BA"). An Education entry's degree title (e.g. "BA in
+    Mathematics, minor in Computer Science") is now split into separate lines: the expanded
+    degree name, the field of study, and "Minor in <X>" if present, each its own line, followed
+    by the school line and the year line. Abbreviations expanded: BA, BS, MA, MS, MBA, PhD. An
+    unrecognized abbreviation falls back to emitting the original title line unchanged (see
+    expand_degree_lines).
+  - Workday's structured Skills field wants individual skills, not the house-style categorized
+    bullets ("Languages & Frameworks: Python, TypeScript, ..."). The Skills section is now
+    flattened into one comma-separated paragraph of the individual skills with the category
+    labels dropped and duplicates removed (case-insensitive), in source order (see
+    process_skills_section).
+
 Rules learned from a live Workday "Autofill with Resume" test against the docx this script
 produces (2026-10-05), since the parser only has four fields to assign per entry (Title,
 Company, Location, Dates) and no concept of a non-job section:
@@ -141,6 +155,40 @@ TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
 SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
 
+DEGREE_EXPANSIONS = {
+    "BA": "Bachelor of Arts",
+    "BS": "Bachelor of Science",
+    "MA": "Master of Arts",
+    "MS": "Master of Science",
+    "MBA": "Master of Business Administration",
+    "PHD": "Doctor of Philosophy",
+}
+DEGREE_TITLE_RE = re.compile(
+    r"^\s*([A-Za-z.]+)\s*(?:in\s+(.+?))?\s*(?:,\s*minor\s+in\s+(.+?))?\s*$",
+    re.IGNORECASE,
+)
+
+
+def expand_degree_lines(raw_title):
+    """Parse a degree title like 'BA in Mathematics, minor in Computer Science' into
+    separate lines: the full degree name, the field of study, and 'Minor in <X>' (each
+    omitted if absent). Returns None if the leading token isn't a recognized abbreviation,
+    so the caller falls back to emitting the original title unchanged."""
+    m = DEGREE_TITLE_RE.match(raw_title)
+    if not m:
+        return None
+    abbr_key = m.group(1).replace(".", "").upper()
+    full = DEGREE_EXPANSIONS.get(abbr_key)
+    if not full:
+        return None
+    lines = [full]
+    field, minor = m.group(2), m.group(3)
+    if field:
+        lines.append(plain(field))
+    if minor:
+        lines.append(f"Minor in {plain(minor)}")
+    return lines
+
 
 def strip_title_subtitle(title):
     """Drop a ' · <subtitle>' suffix from a job title (see module docstring)."""
@@ -207,6 +255,35 @@ def flush_block_lines(b, lines):
     flush()
 
 
+SKILLS_LABEL_RE = re.compile(r"^\*\*[^*]+\*\*:\s*")
+
+
+def process_skills_section(b, lines):
+    """Flatten house-style categorized skill bullets ('- **Label**: a, b, c.') into one
+    comma-separated paragraph of individual skills, category labels dropped, duplicates
+    removed case-insensitively, in source order (see module docstring)."""
+    items = []
+    seen = set()
+    for raw in lines:
+        s = raw.strip()
+        m = re.match(r"^[-*]\s+(.*)$", s)
+        if not m:
+            continue
+        text = SKILLS_LABEL_RE.sub("", m.group(1))
+        text = plain(text).rstrip(".")
+        for item in text.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            key = item.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append(item)
+    if items:
+        b.emit(", ".join(items))
+
+
 def process_job_entries(b, lines, is_education):
     entries = []
     current = None
@@ -241,7 +318,15 @@ def process_job_entries(b, lines, is_education):
         h4 = rest[0].strip()[5:].strip()
         rest.pop(0)
         parts = [p.strip() for p in h4.split("|")]
-        b.emit(title)
+        if is_education:
+            degree_lines = expand_degree_lines(title)
+            if degree_lines:
+                for dl in degree_lines:
+                    b.emit(dl)
+            else:
+                b.emit(title)
+        else:
+            b.emit(title)
         if is_education:
             if len(parts) >= 1 and parts[0]:
                 b.emit(plain(parts[0]))
@@ -348,6 +433,8 @@ def convert(text):
         sb.emit(f"# {section_name}")
         if section_name in ("Experience", "Education"):
             process_job_entries(sb, section_lines, is_education=(section_name == "Education"))
+        elif section_name == "Skills":
+            process_skills_section(sb, section_lines)
         else:
             flush_block_lines(sb, section_lines)
         rendered_sections[section_name] = sb.blocks
