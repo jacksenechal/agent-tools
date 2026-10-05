@@ -5,7 +5,8 @@
 # (make_resume_pdf.sh). Same source markdown, different render target.
 #
 # Usage:
-#   make_resume_workday.sh <input.md> [output.docx] [--name "..."] [--keep-md]
+#   make_resume_workday.sh <input.md> [output.docx] [--name "..."] [--keep-md] \
+#       [--skills-style flat|categorized]
 #
 # This script is general-purpose and contains NO personal details. The applicant name must
 # be supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var
@@ -20,6 +21,12 @@
 #   --name       -> $JOB_SEARCH_APPLICANT_NAME (required if the flag is omitted)
 #   --keep-md    -> also write the intermediate cleaned markdown as "<output base>.workday.md"
 #                   beside the docx (off by default).
+#   --skills-style flat|categorized
+#                -> "flat" (default): Skills section flattened into one comma-separated
+#                   paragraph, category labels dropped (what Workday's structured Skills field
+#                   wants). "categorized": render the source's own categorized "Label: a, b, c"
+#                   lines as plain paragraphs (no Word list, no bold), each category kept on its
+#                   own line. See resume_to_workday_md.py's process_skills_section.
 #
 # Transform: resume_to_workday_md.py (beside this script) rewrites the house-style résumé
 # markdown into plain, single-column markdown — contact block as one item per line, section
@@ -56,11 +63,13 @@ NAME="${JOB_SEARCH_APPLICANT_NAME:-}"
 INPUT=""
 OUTPUT=""
 KEEP_MD=0
+SKILLS_STYLE="flat"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name)     NAME="$2"; shift 2 ;;
     --keep-md)  KEEP_MD=1; shift ;;
+    --skills-style) SKILLS_STYLE="$2"; shift 2 ;;
     -h|--help)  grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)
       if [[ -z "$INPUT" ]]; then INPUT="$1"
@@ -108,14 +117,38 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 WORKDAY_MD="$TMP/out.workday.md"
-python3 "$PY_HELPER" "$INPUT" "$WORKDAY_MD"
+python3 "$PY_HELPER" "$INPUT" "$WORKDAY_MD" --skills-style "$SKILLS_STYLE"
 
 if [[ "$KEEP_MD" -eq 1 ]]; then
-  KEEP_PATH="${OUTPUT%.docx}.workday.md"
+  KEEP_PATH="${OUTPUT%.*}.workday.md"
   cp "$WORKDAY_MD" "$KEEP_PATH"
   echo "Wrote: $KEEP_PATH"
 fi
 
-pandoc "$WORKDAY_MD" -o "$OUTPUT" -f markdown-smart -t docx --standalone
+# If the requested output is a .pdf, render to .docx first (same plain single-column
+# layout Workday's parser wants), then convert that docx to PDF with LibreOffice headless.
+# This exists for testing whether Workday's "Autofill with Resume" populates its structured
+# Skills field from a plain PDF the way it does from a styled PDF, while keeping the
+# work-experience-friendly plain layout this script already produces for .docx. LibreOffice's
+# docx->pdf conversion preserves that plain layout (no reflow into columns/tables), so the PDF's
+# text should read the same as the docx's when extracted with `pdftotext -layout`.
+case "$OUTPUT" in
+  *.pdf)
+    DOCX_TMP="$TMP/render.docx"
+    pandoc "$WORKDAY_MD" -o "$DOCX_TMP" -f markdown-smart -t docx --standalone
+    command -v soffice >/dev/null 2>&1 || { echo "Error: soffice (LibreOffice) not found; cannot render .pdf output." >&2; exit 1; }
+    soffice --headless --convert-to pdf --outdir "$TMP" "$DOCX_TMP" >/dev/null 2>&1
+    CONVERTED="$TMP/$(basename "${DOCX_TMP%.docx}.pdf")"
+    if [[ ! -f "$CONVERTED" ]]; then
+      echo "Error: soffice did not produce a PDF." >&2
+      exit 1
+    fi
+    mkdir -p "$(dirname "$OUTPUT")"
+    cp "$CONVERTED" "$OUTPUT"
+    ;;
+  *)
+    pandoc "$WORKDAY_MD" -o "$OUTPUT" -f markdown-smart -t docx --standalone
+    ;;
+esac
 
 echo "Wrote: $OUTPUT"

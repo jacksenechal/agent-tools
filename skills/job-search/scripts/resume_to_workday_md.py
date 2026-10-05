@@ -73,7 +73,9 @@ chosen purely for parser behavior is fine even if it wouldn't be on the real ré
   - The Independent Consultant entry's forced Company (see the "Self-employed" rule further
     below) is now "Senechal Consulting" instead of "Self-employed": Jack's direction is that this
     reads as an actual org name to the parser rather than a status word. The title stays
-    "Independent Consultant".
+    "Independent Consultant". Updated again 2026-10-05: forced Company changed to "Freelance"
+    (Jack's preferred value; falls back to "Senechal Consulting" if Workday drops or mis-parses
+    "Freelance").
   - The Education entry's school name "University of North Carolina at Asheville" is rendered as
     "University of North Carolina Asheville" (no "at"): Workday's School field didn't match the
     "at Asheville" form against its lookup. See SCHOOL_NAME_OVERRIDES — narrow, exact-match
@@ -166,7 +168,7 @@ KEPT_SECTIONS = ("Summary", "Experience", "Education", "Skills")
 
 TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
-SELF_EMPLOYED_COMPANY = "Senechal Consulting"
+SELF_EMPLOYED_COMPANY = "Freelance"
 SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
 
 # Narrow, exact-match school-name overrides learned from a live Workday parser test (see module
@@ -276,13 +278,33 @@ def flush_block_lines(b, lines):
     flush()
 
 
-SKILLS_LABEL_RE = re.compile(r"^\*\*[^*]+\*\*:\s*")
+SKILLS_LABEL_RE = re.compile(r"^\*\*([^*]+)\*\*:\s*")
 
 
-def process_skills_section(b, lines):
-    """Flatten house-style categorized skill bullets ('- **Label**: a, b, c.') into one
-    comma-separated paragraph of individual skills, category labels dropped, duplicates
-    removed case-insensitively, in source order (see module docstring)."""
+def process_skills_section(b, lines, style="flat"):
+    """Render the Skills section either as one flattened comma-separated paragraph (style
+    "flat", the default: house-style categorized skill bullets '- **Label**: a, b, c.' with
+    category labels dropped, duplicates removed case-insensitively, in source order — this is
+    what Workday's structured Skills field wants, see module docstring), or, for style
+    "categorized", as the source's own categorized lines rendered as plain "Label: a, b, c"
+    paragraphs (no Word list, no bold) — kept distinct per category rather than merged into one
+    paragraph, for cases where the categorization itself should remain visible/parseable."""
+    if style == "categorized":
+        for raw in lines:
+            s = raw.strip()
+            m = re.match(r"^[-*]\s+(.*)$", s)
+            if not m:
+                continue
+            item_text = m.group(1)
+            label_m = SKILLS_LABEL_RE.match(item_text)
+            if label_m:
+                label = plain(label_m.group(1))
+                rest = plain(SKILLS_LABEL_RE.sub("", item_text)).rstrip(".")
+                b.emit(f"{label}: {rest}")
+            else:
+                b.emit(plain(item_text).rstrip("."))
+        return
+
     items = []
     seen = set()
     for raw in lines:
@@ -393,7 +415,7 @@ def process_job_entries(b, lines, is_education):
         flush_block_lines(b, rest)
 
 
-def convert(text):
+def convert(text, skills_style="flat"):
     b = Builder()
     lines = text.split("\n")
     n = len(lines)
@@ -457,7 +479,7 @@ def convert(text):
         if section_name in ("Experience", "Education"):
             process_job_entries(sb, section_lines, is_education=(section_name == "Education"))
         elif section_name == "Skills":
-            process_skills_section(sb, section_lines)
+            process_skills_section(sb, section_lines, style=skills_style)
         else:
             flush_block_lines(sb, section_lines)
         rendered_sections[section_name] = sb.blocks
@@ -470,13 +492,28 @@ def convert(text):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: resume_to_workday_md.py <input.md> <output.workday.md>", file=sys.stderr)
+    args = sys.argv[1:]
+    skills_style = "flat"
+    if "--skills-style" in args:
+        idx = args.index("--skills-style")
+        try:
+            skills_style = args[idx + 1]
+        except IndexError:
+            print("Error: --skills-style requires a value (flat|categorized)", file=sys.stderr)
+            sys.exit(1)
+        del args[idx:idx + 2]
+    if skills_style not in ("flat", "categorized"):
+        print(f"Error: --skills-style must be 'flat' or 'categorized', got '{skills_style}'",
+              file=sys.stderr)
         sys.exit(1)
-    with open(sys.argv[1], encoding="utf-8") as f:
+    if len(args) != 2:
+        print("Usage: resume_to_workday_md.py <input.md> <output.workday.md> "
+              "[--skills-style flat|categorized]", file=sys.stderr)
+        sys.exit(1)
+    with open(args[0], encoding="utf-8") as f:
         text = f.read()
-    out, notes = convert(text)
-    with open(sys.argv[2], "w", encoding="utf-8") as f:
+    out, notes = convert(text, skills_style=skills_style)
+    with open(args[1], "w", encoding="utf-8") as f:
         f.write(out)
     for note in notes:
         print(f"NOTE: {note}", file=sys.stderr)
