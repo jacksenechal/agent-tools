@@ -418,6 +418,8 @@ def process_job_entries(b, lines, is_education):
             scope_line = rest.pop(0)
             scope_text = plain(scope_line.strip())
             scope_text = SCOPE_LABEL_RE.sub("", scope_text)
+            if scope_text:
+                scope_text = scope_text[0].upper() + scope_text[1:]
             b.emit(scope_text)
             while rest and rest[0].strip() == "":
                 rest.pop(0)

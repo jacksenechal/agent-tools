@@ -60,12 +60,23 @@ conditional on "looks done" or "test mode."
   Save and Continue with a field-level error until fixed. `resume_to_workday_md.py`'s `plain()`
   now strips these automatically, so a fresh render is clean — but if you ever hand-edit text
   into one of these fields (or paste from elsewhere), re-check for straight quotes before saving.
-- Skills: autofill **never** populates this field, and the type-ahead picker itself may be
-  non-functional on a given tenant — on Early Warning it returned "No Items." for every query
-  tried, including common terms (Python, Kubernetes, Leadership, Java) and even a bare single
-  letter ("a"). Try two or three obvious terms from the résumé's Skills section; if every one
-  comes back "No Items.", the picker is broken on this tenant, not the terms — leave Skills
-  blank and move on rather than burning turns on more variations.
+- Skills: autofill **never** populates this field, and behavior is **tenant-dependent**.
+  - Early Warning (wd5): the type-ahead picker returned "No Items." for every query tried,
+    including common terms (Python, Kubernetes, Leadership, Java) and even a bare single letter
+    ("a") — broken on this tenant, not the terms.
+  - Salesforce (wd12): a "Skills and Strengths (Optional)" chip field shows ~15 "(Suggested)"
+    skills inferred from the uploaded résumé (seen with the styled PDF), but the field caps at
+    10. Prune to the 10 most relevant to the posting — keep the job's core stack and leadership
+    terms, drop generic ones ("Mobile Applications," "Computer Programming") when off-target.
+  - General procedure: if suggestions appear, prune to 10. If none appear and the picker works,
+    type up to 10 terms from the résumé's Skills section that match the posting. If the picker
+    is dead (Early Warning-style), leave it blank and move on — don't burn turns on variations.
+  - **Untested**: whether the parser-shaped `.docx` also triggers Salesforce-style suggestions
+    (likely, since they're inferred from text). Never re-upload the styled PDF after the docx —
+    it re-runs autofill and overwrites the docx-parsed work history. The reverse order (PDF
+    first for suggestions, then Back and docx) is also untested, and whether skill chips survive
+    a re-parse is unknown. Verify both on the next real application on a suggestion-capable
+    tenant.
 - Swap the attachment: delete the autofill `.docx`, upload the styled, named PDF
   (`applications/<id>/Resume - <Name> - <Role>.pdf`) in its place. The docx only existed to
   drive the parse; the recruiter should see the real résumé.
@@ -78,12 +89,12 @@ conditional on "looks done" or "test mode."
 - Answer everything `profile.md` covers directly (work authorization, prior-employer check →
   No, age 18+ → Yes, relatives-at-company → No, employment type → check "Full time").
 - State-of-residence question: match the address state.
-- Fields `profile.md` doesn't cover but Workday **requires** to proceed past this page (seen on
-  this tenant: desired start date, "does the posted salary range align," willing to relocate
-  without assistance): these are genuinely Jack's calls. On a real application, stop here and
-  ask rather than guessing. On a *test* run whose only purpose is validating the flow, a
-  clearly-labeled placeholder is fine to get to Review — call it out plainly in the report, don't
-  let it read as a real answer.
+- Desired start date, "does the posted salary range align," and willing to relocate without
+  assistance: answer from `profile.md`'s standing answers (one to two weeks out or the first of
+  next month; Yes; No). For anything else Workday **requires** to proceed past this page that
+  `profile.md` doesn't cover, stop and ask rather than guessing. On a *test* run whose only
+  purpose is validating the flow, a clearly-labeled placeholder is fine to get to Review — call
+  it out plainly in the report, don't let it read as a real answer.
 - Optional fields (languages spoken, licenses/certifications, willing to travel): leave blank
   unless `profile.md` has an answer; these are rarely load-bearing.
 
@@ -130,6 +141,7 @@ conditional on "looks done" or "test mode."
 | Company blank for consulting entry | "Freelance" doesn't survive Workday's parse on this tenant | Use "Senechal Consulting" (current default) |
 | Job title "Consultant" | Parser drops "Independent" | Manually fix to "Independent Consultant" |
 | Save and Continue blocked, "illegal characters" error | Straight `" \ < > [ ] { }` in a free-text field | `resume_to_workday_md.py`'s `plain()` strips these now; re-render if editing by hand |
-| Skills type-ahead returns "No Items." for everything | Tenant's skill-cloud lookup may be non-functional | Try 2-3 terms, then leave blank — don't loop |
+| Skills type-ahead returns "No Items." for everything | Tenant's skill-cloud lookup may be non-functional (seen on Early Warning) | Try 2-3 terms, then leave blank — don't loop |
+| Skills chip field shows ~15 "(Suggested)" skills, caps at 10 | Tenant infers skills from uploaded résumé text (seen on Salesforce) | Prune to the 10 most relevant to the posting |
 | Required field has no visible `*` until you try to save | Asterisk sometimes only renders after a validation pass | Expect this on Self Identify's Name/Date |
 | `browser_file_upload` says "outside allowed roots" or `ENOENT` | Harness-allowlist vs. container-filesystem path mismatch | See `playwright-docker` skill's "File uploads" section |
