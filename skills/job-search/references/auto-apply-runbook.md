@@ -28,8 +28,9 @@ hand, never silently).
 
 Take up to `daily_cap` of them, oldest `date_updated` first.
 
-**`max_live_per_company`**: count existing rows at the same company with stage `discovered`
-through `interviewing` (same set `artifact/README.md`'s "also live" uses). Skip a candidate that
+**`max_live_per_company`**: count rows at the same company already submitted and still open
+(stage `applied` or `interviewing`); unsubmitted rows don't count. (The tracker page's "also
+live" list is wider on purpose: it's context for Jack, not the cap.) Skip a candidate that
 would push the company over the cap; note on the row `auto-apply: skipped, at
 max_live_per_company (<n> already live)` and move to the next candidate. Never silently drop it.
 
@@ -113,6 +114,8 @@ condition fired and what's missing. Leave whatever partial `submission/` materia
 The moment a snapshot or screenshot shows a CAPTCHA, "unusual activity," or any bot-detection
 interstitial: call the **PushNotification** tool immediately — `"CAPTCHA on <Company> <Role>:
 clear it in noVNC (http://localhost:6080/vnc.html)"` — don't wait to finish the current field.
+If PushNotification isn't available in this run (headless runs may lack it), also run
+`notify-send -u critical "job-search apply" "<same message>"` so a desktop alert still fires.
 Then poll the page every ~2 minutes for about 10 minutes (a handful of snapshots, not a tight
 loop) waiting for Jack to clear it. If it clears, continue the fill from where it stopped. If it
 doesn't clear within the window, park the row: note `auto-apply: CAPTCHA not cleared, parked
