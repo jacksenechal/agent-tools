@@ -91,6 +91,13 @@ Runs once a day at a randomized time (see Scheduling).
    (`discovered` through `ready_to_apply`) on a Greenhouse, Ashby, or Lever board. Resolve any
    `missing` result before closing it — see "Weekly: liveness + sync" below, "Resolve before
    closing"; the daily check and the weekly sweep share that rule.
+5b. **Watchlist poll.** Run `scripts/watch_companies.py` against
+   `~/workspace/jobs/strategy/watchlist.csv` (held, first-degree, and high-coherence
+   companies with a public Greenhouse/Ashby/Lever board — see SKILL.md "discover" step 5c for
+   the full procedure). `NEW` matches go through `add`; `REOPENED <id>` matches go through the
+   reopen rule (SKILL.md "Archiving") instead, reusing the research/résumé/gate/referral
+   already on that row. Watchlist companies with no public board (`ats=none`) are covered by
+   the weekly liveness run instead (below), not here.
 6. **Commit and push** the jobs repo, every run, even when zero new jobs were found: the
    page's day-relative sections are derived from repo state that changes daily regardless of
    new finds, and the steward only rebuilds the page when `HEAD` has moved. **This run is
@@ -107,6 +114,16 @@ strongest surface-level fit, add the rest at `stage=discovered` without research
 explicitly in the notification. Never silently truncate.
 
 ## Weekly: liveness + sync
+
+### Watchlist, `ats=none` companies
+
+`~/workspace/jobs/strategy/watchlist.csv` rows with `ats=none` (Workday, a custom careers
+site) have no public board API for the daily poll to hit, so this weekly run checks them by
+browser instead: one `golden`-browser visit per `none` company's careers page, title-filtered
+and geo-filtered the same way as `scripts/watch_companies.py` (SKILL.md "discover" step 5c).
+Chosen over the Monday `network` run because this is a company-board crawl, not a
+person-to-person touch, and liveness already visits company careers pages for "resolve before
+closing" below — the same browser trip covers both. No LinkedIn page loads either way.
 
 ### Liveness
 

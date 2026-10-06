@@ -623,6 +623,20 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
     `application_url`, add a dated note, keep the row. Not found → `stage=closed`, note where
     it looked, archive the folder. `unknown` rows (non-ATS URL, or a network error) get no
     action. This is the same rule the weekly `liveness` sweep uses.
+5c. **Watchlist poll.** Run `scripts/watch_companies.py` (no flags — a real run always updates
+    the seen-state file; `--dry-run` is for manual trial only) against
+    `~/workspace/jobs/strategy/watchlist.csv`. It lists open jobs at every company with a
+    public Greenhouse/Ashby/Lever board, filters to Jack's role families and US-remote/Bay
+    Area geography, and prints `NEW` and `REOPENED <id>` rows (never edits the tracker itself
+    — see the script's docstring for the matching order). For each line:
+    - `NEW` → run `add` on it exactly as a saved-list find (Stage 1 onward). `reason=held` or
+      `first-degree` routes the row to the `personal` lane at `add` (`strategy/auto-apply.md`,
+      "Lanes"); if `contact` is non-empty, set `referral_contact` to it and
+      `referral_status=identified`. `reason=high-coherence` runs the normal lane logic.
+    - `REOPENED <id>` → follow the reopen rule (SKILL.md "Archiving") instead of `add`: reuse
+      the research, résumé, gate, and referral already on that row rather than redoing them.
+    Companies with `ats=none` in the watchlist have no public board API; the weekly `liveness`
+    run covers them by browser instead (see `references/orchestrator-loop.md`).
 6. Commit and push the jobs repo. Append a run line to `orchestrator.log`. **Headless
    `discover` has no Artifact tool and cannot publish, and `tracker-view.html` is gitignored
    generated output**, so there is nothing of the page itself to build or commit here — the
@@ -1000,6 +1014,23 @@ if it exists, move it back rather than creating a fresh folder.
 
 **Resolving a folder**: anything that looks up an application folder must check
 `applications/<id>/` first, then `applications/archived/<id>/`.
+
+**The reopen rule.** A find (watchlist, discover, scout) that matches an archived row by URL/
+job id or by company + normalized title (SKILL.md "discover", step 5c) reuses that row instead
+of starting fresh:
+
+- **Archived as `closed`** (posting pulled): reopen it. `git mv applications/archived/<id>
+  applications/<id>`. Restore the stage it had before closing (read it off the notes; use
+  `researched` if unclear). Update `url`/`application_url` to the new posting, and add a dated
+  note: "reposted `<date>`, new id `<new-id-if-any>`". Save the new posting as
+  `job-posting.md`, keeping the old one as `job-posting-<date>.md`, and diff the two. Same in
+  substance → keep the résumé, letter, and gate results as they are. Changed → flag what
+  changed in the note and re-gate only the parts the change touches. Keep `referral_contact`
+  and `referral_status` as they were; if there's a referral contact, add a line to
+  `strategy/networking/inbox.md` telling Jack to let them know it's back up.
+- **Archived as `rejected` or `withdrawn`:** don't reopen or re-add. Surface it to Jack once
+  (tracker page's Needs You) with the row's last note — re-applying after a rejection is his
+  call, cooldowns exist.
 
 ## CSV Read/Write
 
