@@ -4,15 +4,17 @@ A long-running background loop that keeps the pipeline fed and current without t
 driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
 sync** (`liveness`, Sundays 10:00), a **weekly North Bay re-scout** (`northbay`, Tuesdays
 09:00, which runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end), and a **weekly
-networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below).
+networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below). A fifth mode,
+**auto-apply** (`apply`), exists but is **not installed as a timer yet** — Jack runs it by hand
+until he's seen enough runs to trust the schedule (see "Auto-apply" below).
 
 Discovery's jitter is deliberately small (15 min): it rebuilds and republishes the tracker
 artifact at the end of every run, and a small jitter keeps that refreshed page ready early in
 the morning.
 
-All four are modes of `scripts/orchestrator.sh <discover|liveness|northbay|network>`, which is
-also how to run one by hand. Installed timers are the ground truth for what is actually
-running: `systemctl --user list-timers 'job-search-*'`.
+All five are modes of `scripts/orchestrator.sh <discover|liveness|northbay|network|apply>`,
+which is also how to run one by hand. Installed timers are the ground truth for what is
+actually running: `systemctl --user list-timers 'job-search-*'`.
 
 ## Why systemd, not CronCreate or /loop
 
@@ -162,6 +164,19 @@ It does not touch the browser (no LinkedIn, no golden session) and never sends a
 drafts land in a person's thread file marked `DRAFT` for Jack to send. It writes
 `strategy/networking/this-week.md` (at most two touches) and a dated `journal.md` entry, and
 never changes a tracker row's stage.
+
+## Auto-apply (`apply`)
+
+Fills, and once `auto-apply.json` says `"mode": "live"`, submits applications for tracker rows
+Jack has approved into the `auto` lane. Framework: the private repo's `strategy/auto-apply.md`.
+Full procedure: `references/auto-apply-runbook.md`.
+
+It needs the golden browser like `discover`/`liveness`/`northbay` do (this script's preflight
+covers it — `apply` is not in the `network`-only skip list), runs one row at a time, never
+submits unless the mode file says `live` at the moment of the click, and hands a row back to
+Jack (sets `lane=personal` with a note) on any stop condition rather than guessing. **Not
+installed as a systemd timer** — run it by hand (`scripts/orchestrator.sh apply`) until Jack has
+reviewed enough shadow runs to trust scheduling it.
 
 ## Scheduling
 

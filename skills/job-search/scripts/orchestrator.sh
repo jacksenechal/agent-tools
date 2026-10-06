@@ -5,13 +5,13 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $(basename "$0") <discover|liveness|northbay|network> [--force] [--dry-run]" >&2
+  echo "Usage: $(basename "$0") <discover|liveness|northbay|network|apply> [--force] [--dry-run]" >&2
 }
 
 MODE="${1:-}"
 shift || true
 
-if [[ "$MODE" != "discover" && "$MODE" != "liveness" && "$MODE" != "northbay" && "$MODE" != "network" ]]; then
+if [[ "$MODE" != "discover" && "$MODE" != "liveness" && "$MODE" != "northbay" && "$MODE" != "network" && "$MODE" != "apply" ]]; then
   usage
   exit 2
 fi
@@ -107,6 +107,7 @@ case "$MODE" in
   liveness) PROMPT="/job-search liveness" ;;
   northbay) PROMPT="Read $JOBS_DIR/strategy/north-bay-rescout.md and execute it end to end." ;;
   network) PROMPT="/job-search network" ;;
+  apply) PROMPT="/job-search apply" ;;
 esac
 
 if [[ "$DRY_RUN" -eq 1 ]]; then

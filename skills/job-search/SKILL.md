@@ -44,6 +44,7 @@ The orchestrator runs on timers rather than on request:
 | `liveness` | Sundays 10:00 | are pre-application postings still open, sync saved lists |
 | `northbay` | Tuesdays 09:00 | run `strategy/north-bay-rescout.md` end to end |
 | `network` | Mondays 08:00 | weekly networking loop: fold in progress, deep think, write `this-week.md` |
+| `apply` | manual only, no timer yet | auto-apply run: fill (shadow) or submit (live) approved rows, per `auto-apply.json` |
 
 `discover` republishes the tracker artifact at the end of every run, so the morning view is
 current by roughly 06:30. See those sub-commands below, and `watch setup` to install the
@@ -732,6 +733,21 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
    anomaly. If more than 10 need syncing, do 10 and leave the rest for next week.
 3. Commit and push. Append a run line to `orchestrator.log`.
 4. Print a summary: closed, still open, inconclusive, sync writes performed.
+
+### `apply` — Auto-apply run (not yet on a timer)
+
+Fills, and — once `~/workspace/jobs/auto-apply.json` says `"mode": "live"` — submits
+applications for rows Jack has approved into the `auto` lane (`strategy/auto-apply.md`). Full
+procedure: `references/auto-apply-runbook.md`. Short version: sync lane decisions from the
+tracker artifact, pick up to `daily_cap` approved rows respecting `max_live_per_company`, make
+sure the résumé/cover-letter materials clear the External Output Gate, resolve and fill the
+live form in the golden browser (never LinkedIn Easy Apply, Workday hands off to Jack), hand a
+row back to Jack on any stop condition (legal/attestation question, AI-ban, login wall, unknown
+field, lost filename, no real "why us" answer), push a CAPTCHA alert and wait rather than
+retrying past it, then branch on mode — shadow stops before Submit, live clicks it and marks
+`applied`, paused does nothing. Always ends with a commit/push and a tracker artifact rebuild.
+Run by hand for now (`scripts/orchestrator.sh apply`); Jack installs the timer once he's seen a
+few runs.
 
 ### `watch setup` — Install the orchestrator timers
 
