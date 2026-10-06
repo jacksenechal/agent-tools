@@ -587,6 +587,9 @@ or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
 
 Read `references/orchestrator-loop.md` first. Normally invoked by a systemd timer, not by hand.
 
+0. **Sync lane decisions.** Read the tracker artifact's `lane_decisions` collection with the
+   `ArtifactData` tool and copy each decision into `tracker.csv`'s `lane` column (`auto` or
+   `personal`). See `artifact/README.md`, "Lane approval".
 1. Read `~/workspace/jobs/sources.json`. For each `enabled` source, spawn a subagent to scrape
    the saved-jobs list via `mcp__playwright-golden__*` (`haiku` for Indeed, `sonnet` for
    LinkedIn per its safety protocol). Return the list verbatim with each job's site key.
