@@ -63,9 +63,11 @@ a legitimate output when the evidence says so.
    felt hard, the first touch must be smaller than last week's.
 2. Append a dated entry at the top of `journal.md`: what was folded in, what was researched,
    the insight kept (and the ones set aside, one line each), the decision. Under 15 lines.
-3. Commit and push the jobs repo. Append a run line to `orchestrator.log`.
-4. Rebuild and republish the tracker artifact if any tracker column changed.
-5. Notify Jack (`notify-send` on the machine; the brief itself is the message).
+3. Commit and push the jobs repo. Append a run line to `orchestrator.log`. `network` runs
+   headless and has no Artifact tool, so it cannot rebuild or publish the tracker page itself;
+   if any tracker column changed, the steward session picks that up and rebuilds/republishes
+   on its sync-publish cron.
+4. Notify Jack (`notify-send` on the machine; the brief itself is the message).
 
 ### `this-week.md` template
 

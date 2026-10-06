@@ -46,9 +46,11 @@ The orchestrator runs on timers rather than on request:
 | `network` | Mondays 08:00 | weekly networking loop: fold in progress, deep think, write `this-week.md` |
 | `apply` | manual only, no timer yet | auto-apply run: fill (shadow) or submit (live) approved rows, per `auto-apply.json` |
 
-`discover` republishes the tracker artifact at the end of every run, so the morning view is
-current by roughly 06:30. See those sub-commands below, and `watch setup` to install the
-timers. `scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
+`discover` rebuilds the tracker artifact and commits at the end of every run (headless runs
+have no Artifact tool, so they cannot publish); the steward session republishes it
+(sync-publish cron, every 2h from 07:17 plus 06:40), so the morning view is current by
+roughly 07:20. See those sub-commands below, and `watch setup` to install the timers.
+`scripts/orchestrator.sh <mode> [--dry-run]` runs any of them by hand.
 
 ## Project Locations
 
@@ -593,9 +595,10 @@ or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
 
 Read `references/orchestrator-loop.md` first. Normally invoked by a systemd timer, not by hand.
 
-0. **Sync lane decisions.** Read the tracker artifact's `lane_decisions` collection with the
-   `ArtifactData` tool and copy each decision into `tracker.csv`'s `lane` column (`auto` or
-   `personal`); delete the synced docs after the run republishes. See `artifact/README.md`, "Lane approval".
+Lane-decision sync is no longer a `discover` step: headless runs have no `ArtifactData` tool.
+The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
+`artifact/README.md`, "Lane approval").
+
 1. Read `~/workspace/jobs/sources.json`. For each `enabled` source, spawn a subagent to scrape
    the saved-jobs list via `mcp__playwright-golden__*` (`haiku` for Indeed, `sonnet` for
    LinkedIn per its safety protocol). Return the list verbatim with each job's site key.
@@ -612,12 +615,24 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
    main thread (Opus)**.
 5. If more than 8 new jobs appear in one run, research the 8 with the strongest surface fit,
    leave the rest at `discovered`, and **say so explicitly** in the summary. Never silently cap.
-6. Commit and push the jobs repo. Append a run line to `orchestrator.log`.
-7. Rebuild and republish the tracker artifact: `python3 artifact/build.py`, then publish
-   `artifact/tracker-view.html` with the Artifact tool to the pinned URL in `artifact/README.md`.
-   Do this every run, even when zero new jobs were found, because the page's day-relative
-   sections (needs you today, new since yesterday, aging, warnings) are derived from repo state
-   that changes daily regardless of new finds.
+5b. **Posting liveness check.** Run `scripts/check_postings.py` against every pre-applied
+    row (`discovered` through `ready_to_apply`) whose `url` or `application_url` is a
+    Greenhouse, Ashby, or Lever board. For each `missing` row, resolve before closing it
+    (SKILL.md "Archiving" and the liveness rule below): search the company's own careers
+    page and other ATS platforms for the same title first. Found elsewhere → update `url`/
+    `application_url`, add a dated note, keep the row. Not found → `stage=closed`, note where
+    it looked, archive the folder. `unknown` rows (non-ATS URL, or a network error) get no
+    action. This is the same rule the weekly `liveness` sweep uses.
+6. Commit and push the jobs repo. Append a run line to `orchestrator.log`. **Headless
+   `discover` has no Artifact tool and cannot publish, and `tracker-view.html` is gitignored
+   generated output**, so there is nothing of the page itself to build or commit here — the
+   pushed `tracker.csv` is what matters. The steward session rebuilds (`python3
+   artifact/build.py`) and republishes `artifact/tracker-view.html` to the pinned URL in
+   `artifact/README.md` on its sync-publish cron (every 2h from 07:17, plus an early pass at
+   06:40) and syncs lane decisions at the same time. Do the commit/push every run, even when
+   zero new jobs were found, because the page's day-relative sections (needs you today, new
+   since yesterday, aging, warnings) are derived from repo state that changes daily regardless
+   of new finds, and the steward only rebuilds when `HEAD` moves.
 8. Print a one-screen summary: jobs added, fit read on each, obvious misfits worth pruning, and
    anything skipped under the registry.
 
@@ -709,26 +724,41 @@ Read `references/networking-loop.md` first. Normally invoked by a systemd timer 
 4. Hard limits: **never sends** anything (drafts are marked `DRAFT`, Jack sends), **no
    LinkedIn** (no golden browser), **at most two touches** in `this-week.md`, and it **never
    changes tracker stage** (it may write `referral_contact`/`referral_status`).
-5. Commit and push the jobs repo, append a run line to `orchestrator.log`, rebuild and
-   republish the tracker artifact if any tracker column changed, and notify.
+5. Commit and push the jobs repo, append a run line to `orchestrator.log`, rebuild the
+   tracker artifact if any tracker column changed, and notify. Headless, so it cannot
+   publish; the steward's sync-publish cron republishes on its next pass.
 
 ### `liveness` — Weekly liveness sweep + saved-list sync (orchestrator)
 
 Read `references/orchestrator-loop.md` first. Normally invoked by a systemd timer.
 
-1. **Liveness.** For each tracker row at `discovered` through `applied`, fetch the posting and look for **explicit on-page closure text** ("no
+1. **Liveness.** For each tracker row at `discovered` through `applied`: for a Greenhouse,
+   Ashby, or Lever URL, run `scripts/check_postings.py` (board-API check, not a page fetch);
+   for everything else, fetch the posting and look for **explicit on-page closure text** ("no
    longer accepting applications", "position has been filled", "posting has expired").
-   - Closure text found → `stage=closed`, record the phrase and date in `notes`, and archive
-     the folder: `git mv applications/<id> applications/archived/<id>` (see "Archiving" below).
-   - Loads normally → no change; clear any inconclusive counter.
-   - 404 / timeout / redirect / unparseable → **inconclusive**. Increment a counter in
-     `notes`, leave `stage` untouched, retry next week. Never archive on a status code — this
-     means no stage change and no folder move.
-   - Inconclusive 4 weeks running → surface in the summary for a human decision, still no
-     auto-archive (no stage change, no folder move).
+   - Closure text found, or the board API reports the job gone → **missing, not yet closed.**
+     Resolve before closing (see "Resolve before closing" below): search the company's own
+     careers page and the other ATS platforms for the same title.
+     - Found elsewhere → update `url`/`application_url`, add a dated note, keep the row.
+     - Not found on the company's own site → `stage=closed`, note where it looked and the
+       date, and archive the folder: `git mv applications/<id> applications/archived/<id>`
+       (see "Archiving" below).
+   - Loads normally / board API reports open → no change; clear any inconclusive counter.
+   - Network error, timeout, or an unparseable page (e.g. JS-only careers page with no API) →
+     **inconclusive** — the run truly can't tell. Increment a counter in `notes`, leave
+     `stage` untouched, retry next week. Never archive on a network error alone.
+   - Inconclusive 4 weeks running → add the note `LIVENESS: needs Jack <date>` so it surfaces
+     on the tracker page's Needs You section (`artifact/build.py`), still no auto-archive.
    - Rows at `interviewing` or `offer` are **never touched**; if their posting looks closed,
      say so in the summary and leave the stage alone. A closed posting during an active process
      usually means the req was filled by the candidate in it.
+
+   **Resolve before closing.** A `missing` result from one ATS does not mean the role is dead:
+   Hightouch's Greenhouse posting 404'd while the same role was live on an Ashby form embedded
+   on hightouch.com/careers (see `applications/hightouch-em-destinations/submission/submission.md`).
+   So a `missing` row always gets one more look — the company's own careers page and the other
+   ATS platforms — before the stage moves to `closed`. This rule is shared by the daily
+   `discover` run's cheap check and this weekly sweep; see `references/orchestrator-loop.md`.
 2. **Sync.** Reconcile each writable source's saved list to match the tracker (mapping table in
    `orchestrator-loop.md`). Rows at `rejected` / `withdrawn` / `closed` get archived on the
    source site (the external site's own archive/un-save state — distinct from the local
@@ -743,16 +773,17 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 
 Fills, and — once `~/workspace/jobs/auto-apply.json` says `"mode": "live"` — submits
 applications for rows Jack has approved into the `auto` lane (`strategy/auto-apply.md`). Full
-procedure: `references/auto-apply-runbook.md`. Short version: sync lane decisions from the
-tracker artifact, pick up to `daily_cap` approved rows respecting `max_live_per_company`, make
+procedure: `references/auto-apply-runbook.md`. Short version: lane decisions arrive already
+synced into `tracker.csv` by the steward (headless `apply` has no `ArtifactData` tool), pick up
+to `daily_cap` approved rows respecting `max_live_per_company`, make
 sure the résumé/cover-letter materials clear the External Output Gate, resolve and fill the
 live form in the golden browser (never LinkedIn Easy Apply, Workday hands off to Jack), hand a
 row back to Jack on any stop condition (legal/attestation question, AI-ban, login wall, unknown
 field, lost filename, no real "why us" answer), push a CAPTCHA alert and wait rather than
 retrying past it, then branch on mode — shadow stops before Submit, live clicks it and marks
-`applied`, paused does nothing. Always ends with a commit/push and a tracker artifact rebuild.
-Run by hand for now (`scripts/orchestrator.sh apply`); Jack installs the timer once he's seen a
-few runs.
+`applied`, paused does nothing. Always ends with a commit/push and a tracker artifact rebuild
+(the steward republishes; headless `apply` cannot). Run by hand for now
+(`scripts/orchestrator.sh apply`); Jack installs the timer once he's seen a few runs.
 
 ### `watch setup` — Install the orchestrator timers
 
@@ -1076,10 +1107,14 @@ runtime (flags / env / read from the private profile) instead.
 16. **Maintain the tracker artifact.** The private repo publishes a sortable/filterable view of
     `tracker.csv` as a Claude artifact (a primary interface surface for the user). The page also
     carries daily derived status sections (needs you today, what changed, aging, warnings), so
-    it should be republished after any run, not only after a data edit. After any change to
-    `tracker.csv` or to a `job-posting.md` location line, and at the end of every `discover`
-    run, rebuild and republish it: `python3 artifact/build.py`, then publish
-    `artifact/tracker-view.html` with the Artifact tool passing the pinned URL from the private
-    repo's `artifact/README.md` as `url` (never create a new artifact). A notes-only change
-    from a status update (see "Size the event first") can wait for the next `discover` run. Skip only if the private
-    repo has no `artifact/` directory.
+    it should be republished after any run, not only after a data edit. In an **interactive**
+    session, after any change to `tracker.csv` or to a `job-posting.md` location line: rebuild
+    (`python3 artifact/build.py`) and publish `artifact/tracker-view.html` with the Artifact
+    tool, passing the pinned URL from the private repo's `artifact/README.md` as `url` (never
+    create a new artifact). **Headless runs** (`discover`, `liveness`, `northbay`, `network`,
+    `apply`) have no Artifact tool and cannot publish, and `tracker-view.html` is gitignored
+    generated output, so they just commit and push `tracker.csv`; the steward session is the
+    only one with the Artifact tool here, and it rebuilds and republishes on its sync-publish
+    cron (every 2h from 07:17, plus 06:40). A notes-only change from a status update (see "Size
+    the event first") can wait for the steward's next pass. Skip only if the private repo has
+    no `artifact/` directory.

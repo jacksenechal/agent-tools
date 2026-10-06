@@ -9,15 +9,16 @@ procedure the `apply` mode runs.
 start of the run and again before every Submit click (step h) — never cache the mode across a
 long run.
 
-## (a) Sync lane decisions
+## (a) Lane decisions are already synced
 
-Same step `discover` already runs (SKILL.md, "Sync lane decisions"; `artifact/README.md`,
-"Lane approval"). Read the `lane_decisions` collection off the tracker artifact (pinned URL in
-`artifact/README.md`) with `ArtifactData` (`action: "list"`), and write each decision into the
-matching `tracker.csv` row's `lane` column (`auto` or `personal`). After the run's tracker push and republish, delete the synced docs (`artifact/README.md`, "Lane approval": the collection is an inbox). Use the CSV dialect the repo
-already uses: CRLF line endings, `csv.DictReader`/`DictWriter`, never raw string edits (jobs
-`CLAUDE.md`, and `tracker.csv` itself — check with `file tracker.csv` or `cat -A | head -1` if
-unsure).
+Headless `apply` has no `ArtifactData` tool, so it does not read the tracker artifact's
+`lane_decisions` collection itself. The steward session does that sync (sync-publish cron;
+`ops/steward/charter.md`, `artifact/README.md` "Lane approval") before this run starts, writing
+each decision into `tracker.csv`'s `lane` column (`auto` or `personal`) and deleting the synced
+docs after it republishes. This run just reads `tracker.csv` as-is — use the CSV dialect the
+repo already uses: CRLF line endings, `csv.DictReader`/`DictWriter`, never raw string edits
+(jobs `CLAUDE.md`, and `tracker.csv` itself — check with `file tracker.csv` or `cat -A | head -1`
+if unsure).
 
 ## (b) Pick rows
 
@@ -163,12 +164,14 @@ restores the wrong one.
 
 ```bash
 git push
-python3 artifact/build.py
 ```
 
-Then publish `artifact/tracker-view.html` with the Artifact tool to the pinned URL in
-`artifact/README.md` (never create a new artifact). Append a run line to `orchestrator.log`
-(same format the other modes use).
+**Headless `apply` has no Artifact tool and cannot publish.** `tracker-view.html` is generated,
+gitignored output, so there is nothing of it to commit here; the pushed `tracker.csv` is what
+matters. The steward session picks up the new commit, rebuilds (`python3 artifact/build.py`),
+and republishes to the pinned URL in `artifact/README.md` on its sync-publish cron (never
+create a new artifact). Append a run line to `orchestrator.log` (same format the other modes
+use).
 
 ## Summary
 

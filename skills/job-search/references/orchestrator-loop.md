@@ -8,9 +8,10 @@ networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below)
 **auto-apply** (`apply`), exists but is **not installed as a timer yet** — Jack runs it by hand
 until he's seen enough runs to trust the schedule (see "Auto-apply" below).
 
-Discovery's jitter is deliberately small (15 min): it rebuilds and republishes the tracker
-artifact at the end of every run, and a small jitter keeps that refreshed page ready early in
-the morning.
+Discovery's jitter is deliberately small (15 min): it rebuilds the tracker artifact and
+commits at the end of every run (headless, so it cannot publish — the steward session
+republishes on its sync-publish cron), and a small jitter keeps the committed rebuild ready
+early so the steward's 06:40 early pass has something fresh to publish.
 
 All five are modes of `scripts/orchestrator.sh <discover|liveness|northbay|network|apply>`,
 which is also how to run one by hand. Installed timers are the ground truth for what is
@@ -86,12 +87,19 @@ Runs once a day at a randomized time (see Scheduling).
      assessment against `strategy/narrative.md` positioning. Per the model-selection rule,
      fit judgment never goes to a cheap subagent.
    - Advance to `stage=researched`.
-5. **Commit and push** the jobs repo.
-6. **Rebuild and republish the tracker artifact** (`python3 artifact/build.py`, then publish
-   `artifact/tracker-view.html` to the pinned URL in `artifact/README.md`), every run, even
-   when zero new jobs were found, since the page's day-relative sections are derived from repo
-   state that changes daily regardless of new finds.
-7. **Notify** with a one-screen summary: what was added, the fit read on each, and anything
+5. **Posting liveness check.** Run `scripts/check_postings.py` against pre-applied rows
+   (`discovered` through `ready_to_apply`) on a Greenhouse, Ashby, or Lever board. Resolve any
+   `missing` result before closing it — see "Weekly: liveness + sync" below, "Resolve before
+   closing"; the daily check and the weekly sweep share that rule.
+6. **Commit and push** the jobs repo, every run, even when zero new jobs were found: the
+   page's day-relative sections are derived from repo state that changes daily regardless of
+   new finds, and the steward only rebuilds the page when `HEAD` has moved. **This run is
+   headless and has no Artifact tool, so it cannot publish, and `tracker-view.html` is
+   gitignored generated output**, so there is nothing to build here — the steward session
+   rebuilds (`python3 artifact/build.py`) and republishes `artifact/tracker-view.html` to the
+   pinned URL in `artifact/README.md` on its sync-publish cron (every 2h from 07:17, plus an
+   early pass at 06:40) and syncs lane decisions at the same time.
+8. **Notify** with a one-screen summary: what was added, the fit read on each, and anything
    that looks like an obvious misfit worth pruning.
 
 **Budget guard**: if a single run finds more than 8 new jobs, research the 8 with the
@@ -109,8 +117,10 @@ in the summary and the stage is left to the user. Terminal rows (`rejected`, `wi
 `closed`) are skipped.
 
 **Detection is semantic, not HTTP.** A 404, a timeout, a redirect, or a network error is
-**inconclusive**, never a closure. ATS platforms 404 and redirect for many reasons unrelated
-to the job being filled. What counts as closed is explicit on-page text:
+**inconclusive**, never a closure, with one exception: a Greenhouse/Ashby/Lever board API
+reporting the job gone (`scripts/check_postings.py`, used for rows on those platforms) is a
+stronger signal, but still not an immediate close — see "Resolve before closing" below. For
+everything else, what counts as closed is explicit on-page text:
 
 - "no longer accepting applications"
 - "this job is no longer available"
@@ -123,12 +133,27 @@ Outcomes:
 
 | Finding | Action |
 |---|---|
-| Explicit closure text | `stage=closed`, note the phrase found and the date, archive the folder (`git mv applications/<id> applications/archived/<id>`) |
-| Posting loads normally | No change; clear any prior inconclusive counter |
-| 404 / error / redirect / unparseable | **Inconclusive.** Increment a counter in `notes`, leave `stage` alone, retry next week |
+| Explicit closure text, or the board API reports the job gone (`missing`) | Resolve before closing (below); then either update the URL and keep the row, or `stage=closed` + archive |
+| Posting loads normally / board API reports open | No change; clear any prior inconclusive counter |
+| Network error / timeout / redirect / unparseable page (no board API available) | **Inconclusive.** Increment a counter in `notes`, leave `stage` alone, retry next week |
 
-An inconclusive result that persists for **4 consecutive weeks** gets surfaced in the
-notification for a human decision. It still does not auto-archive.
+An inconclusive result that persists for **4 consecutive weeks** gets the note `LIVENESS:
+needs Jack <date>` added — this is what the run truly cannot tell (e.g. a JS-only careers page
+it can't read), surfaced on the tracker page's Needs You section via that marker
+(`artifact/build.py`). It still does not auto-archive.
+
+**Resolve before closing.** A `missing` result from one ATS does not mean the role is dead —
+Hightouch's Greenhouse posting 404'd while the same role was live on an Ashby form embedded on
+hightouch.com/careers (`applications/hightouch-em-destinations/submission/submission.md`). So
+before a `missing` row is closed, search the company's own careers page and the other ATS
+platforms (Greenhouse, Ashby, Lever) for the same title:
+
+- Found elsewhere → update `url` and/or `application_url` to the new location, add a dated
+  note, and keep the row at its current stage.
+- Not found on the company's own site → `stage=closed`, note where it looked and the date,
+  and archive the folder (`git mv applications/<id> applications/archived/<id>`).
+
+Both the daily `check_postings.py` check in `discover` and this weekly sweep use this rule.
 
 `closed` is a distinct stage from `rejected` (they said no) and `withdrawn` (the user pulled
 out). Add it to the stage list as a terminal state.
