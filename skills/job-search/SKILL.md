@@ -249,6 +249,10 @@ Walk through the full pipeline for a new job posting end-to-end.
    read of the company and of the seat, with its ground, into `job-posting.md` Notes (the
    brief's Read line carries it forward). If the read and the vet verdict disagree, either way,
    the row goes to tier 2 before a letter is spent (instrument, "The read").
+5c1. **Fit grade.** Set `fit` on the row: `<grade>: <reason>` where grade is `strong` / `solid`
+   / `stretch` and reason is ~12 words naming what decided it. Rubric and anchors:
+   `strategy/auto-apply.md` "Fit grade". This is Jack in the role; it does not use the vet's
+   coherence verdict.
 5c2. **Work-life-balance filter.** Apply the "Hard filters" section of the private
    `~/workspace/jobs/strategy/leadership-search.md` using the vet's work/life sub-rating and
    any stated hours expectation (founder statements, the posting). A **fail** there →
@@ -256,9 +260,10 @@ Walk through the full pipeline for a new job posting end-to-end.
    the hours question at the top of the brief's "Needs Jack". This is independent of the
    coherence verdict: long hours sold honestly are not incoherence, but they still fail here.
 5c3. **Set the lane.** Write `lane` per `strategy/auto-apply.md` ("Lanes"): `personal` for a
-   held company, a first-degree company, a non-empty `referral_contact`, or `track=deep`;
-   `auto-proposed` for everything else that reaches this point. Both the held and first-degree
-   lists live in `strategy/auto-apply.md`, not here.
+   held company, a first-degree company, a non-empty `referral_contact`, `track=deep`, or
+   ultra-high fit (`strong` fit plus high coherence); `auto-proposed` for everything else that
+   reaches this point. Both the held and first-degree lists live in `strategy/auto-apply.md`,
+   not here.
 5d. **Route the application.** Apply the routing rules in `references/application-tracks.md`
    and write `fast` or `deep` to the row's `track` column. This decides how much of the rest of
    Stage 1 runs, so do it here rather than discovering it later. On the fast track, skip step 6
