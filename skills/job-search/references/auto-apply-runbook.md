@@ -14,7 +14,7 @@ long run.
 Same step `discover` already runs (SKILL.md, "Sync lane decisions"; `artifact/README.md`,
 "Lane approval"). Read the `lane_decisions` collection off the tracker artifact (pinned URL in
 `artifact/README.md`) with `ArtifactData` (`action: "list"`), and write each decision into the
-matching `tracker.csv` row's `lane` column (`auto` or `personal`). Use the CSV dialect the repo
+matching `tracker.csv` row's `lane` column (`auto` or `personal`). After the run's tracker push and republish, delete the synced docs (`artifact/README.md`, "Lane approval": the collection is an inbox). Use the CSV dialect the repo
 already uses: CRLF line endings, `csv.DictReader`/`DictWriter`, never raw string edits (jobs
 `CLAUDE.md`, and `tracker.csv` itself — check with `file tracker.csv` or `cat -A | head -1` if
 unsure).
