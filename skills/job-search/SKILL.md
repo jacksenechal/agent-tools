@@ -627,14 +627,23 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
     the seen-state file; `--dry-run` is for manual trial only) against
     `~/workspace/jobs/strategy/watchlist.csv`. It lists open jobs at every company with a
     public Greenhouse/Ashby/Lever board, filters to Jack's role families and US-remote/Bay
-    Area geography, and prints `NEW` and `REOPENED <id>` rows (never edits the tracker itself
-    — see the script's docstring for the matching order). For each line:
+    Area geography, and prints `NEW`, `MOVED <id>`, `REOPENED <id>`, and `PRIOR <stage> <id>`
+    rows (never edits the tracker itself — see the script's docstring for the matching order).
+    For each line:
     - `NEW` → run `add` on it exactly as a saved-list find (Stage 1 onward). `reason=held` or
       `first-degree` routes the row to the `personal` lane at `add` (`strategy/auto-apply.md`,
       "Lanes"); if `contact` is non-empty, set `referral_contact` to it and
       `referral_status=identified`. `reason=high-coherence` runs the normal lane logic.
-    - `REOPENED <id>` → follow the reopen rule (SKILL.md "Archiving") instead of `add`: reuse
-      the research, résumé, gate, and referral already on that row rather than redoing them.
+    - `MOVED <id>` → the same posting (by title) is already a **live** tracker row
+      (`discovered` through `offer`) under a different URL/id — a liveness signal (it moved
+      ATS or got a new req id at the same company), not a new find. Note the new URL on that
+      row if it looks like a genuine move; don't `add` it.
+    - `REOPENED <id>` → the matching row is archived as `closed`. Follow the reopen rule
+      (SKILL.md "Archiving") instead of `add`: reuse the research, résumé, gate, and referral
+      already on that row rather than redoing them.
+    - `PRIOR <stage> <id>` (`stage` is `rejected` or `withdrawn`) → don't reopen or re-add.
+      Surface it to Jack once, in Needs You, with that row's last note — the reopen rule's
+      second bullet.
     Companies with `ats=none` in the watchlist have no public board API; the weekly `liveness`
     run covers them by browser instead (see `references/orchestrator-loop.md`).
 6. Commit and push the jobs repo. Append a run line to `orchestrator.log`. **Headless

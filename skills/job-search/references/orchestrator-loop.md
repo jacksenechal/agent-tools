@@ -94,9 +94,11 @@ Runs once a day at a randomized time (see Scheduling).
 5b. **Watchlist poll.** Run `scripts/watch_companies.py` against
    `~/workspace/jobs/strategy/watchlist.csv` (held, first-degree, and high-coherence
    companies with a public Greenhouse/Ashby/Lever board — see SKILL.md "discover" step 5c for
-   the full procedure). `NEW` matches go through `add`; `REOPENED <id>` matches go through the
+   the full procedure and what each status means). `NEW` matches go through `add`; `MOVED <id>`
+   is a liveness signal on a live row, not a new find; `REOPENED <id>` matches go through the
    reopen rule (SKILL.md "Archiving") instead, reusing the research/résumé/gate/referral
-   already on that row. Watchlist companies with no public board (`ats=none`) are covered by
+   already on that row; `PRIOR <stage> <id>` (rejected/withdrawn) is surfaced to Jack once,
+   never auto-reopened. Watchlist companies with no public board (`ats=none`) are covered by
    the weekly liveness run instead (below), not here.
 6. **Commit and push** the jobs repo, every run, even when zero new jobs were found: the
    page's day-relative sections are derived from repo state that changes daily regardless of

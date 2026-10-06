@@ -12,12 +12,20 @@ edits tracker.csv. Companies with `ats=none` have no public board API and are
 left for the weekly liveness/browser check instead.
 
 Matching, in order:
-    1. URL or ATS job id already present in tracker.csv -> skip, not reported.
-    2. Company + normalized title matches an ARCHIVED tracker row (stage
-       rejected/withdrawn/closed) -> reported as REOPENED <id>, not NEW. The
-       reopen rule (SKILL.md, "Archiving") decides what happens next: closed
-       rows get reopened and re-added to, rejected/withdrawn rows are
-       surfaced to Jack but never auto-reopened.
+    1. URL or ATS job id already present in tracker.csv (any stage) -> skip,
+       not reported; it's already a live or archived row with this exact
+       posting.
+    2. Company + normalized title matches ANY tracker row (any stage),
+       the URL is different:
+         - matched row stage == closed -> REOPENED <id>. The reopen rule
+           (SKILL.md, "Archiving") applies: reuse the research/résumé/gate/
+           referral, re-add through `add`.
+         - matched row stage in (rejected, withdrawn) -> PRIOR <stage> <id>.
+           Surfaced to Jack, never auto-reopened or auto-added.
+         - matched row is anything else (a live row: discovered through
+           offer) -> MOVED <id>. Useful liveness signal (the posting moved
+           ATS or got a new id/URL at the same company) but not a new find
+           and not auto-added.
     3. Otherwise, and not already in the seen-state file -> reported as NEW.
 
 Output: TSV to stdout - status, company, title, location, url, reason,
@@ -48,38 +56,40 @@ DEFAULT_SEEN = "~/workspace/jobs/data/watchlist-seen.json"
 USER_AGENT = "Mozilla/5.0 (compatible; job-search-watchlist/1.0)"
 TIMEOUT_DEFAULT = 10
 
-ARCHIVED_STAGES = {"rejected", "withdrawn", "closed"}
-
-# Jack's role families. One title matches if any pattern below is found in
-# the (lowercased) title. Keep this list the single source for what counts
-# as "Jack's kind of role" across the watchlist poller.
-# Patterns whose scope is deliberately bare-keyword (platform, infra,
-# sre/reliability, devops) are noisy on big boards (e.g. "Director, SOX
-# Infrastructure", "AV Engineer, Platform & Automation"), so BARE_FAMILY_RE
-# matches get a second pass against DISQUALIFY_RE below; the leadership
-# patterns (EM, director/head/vp of engineering, AI eng leadership,
-# forward-deployed, staff/principal platform-infra) are specific enough to
-# skip that pass.
+# Jack's role families. A title matches only if it carries a leadership
+# word, OR is a staff/principal IC title in the platform/infra/SRE/DevOps
+# family -- plain senior or mid IC titles are out even when they name one of
+# those domains (e.g. "Senior Cluster Site Reliability Engineer", "Software
+# Engineer - DevOps Platform" do NOT match; "Staff Site Reliability
+# Engineer" does).
+#
+# (a) Leadership word, scoped to engineering: manager/director/head/VP/
+#     vice-president paired with "engineering" somewhere in the same title
+#     clause (either order; a dash still breaks the clause, which is what
+#     keeps "Incident Response Manager - Product & Engineering" out, but a
+#     comma doesn't, which is what lets in "Senior Manager, Site Reliability
+#     Engineering - Infrastructure Platform" and "Manager, Web Engineering");
+#     CTO bare (unambiguous); or "lead" used as an engineering role noun
+#     (engineering lead, tech lead, TLM, FDE lead) rather than a bare
+#     trailing "... Lead" on an IC title.
 LEADERSHIP_PATTERNS = [
-    r"engineering manager",
-    r"\b(director|head|vp)\b[^,\-–|]*\bengineering\b",
-    r"\bengineering\b[^,\-–|]*\b(director|head|vp)\b",
-    r"\bai\b[^,\-–|]*\b(engineering|eng)\b[^,\-–|]*\b(manager|lead|director|head)\b",
-    r"forward.deployed[^,\-–|]*\b(lead|manager|director|head)\b",
-    r"\b(staff|principal)\b[^,\-–|]*\b(platform|infra|infrastructure)\b",
+    r"\b(manager|director|head|vp|vice president)\b[^\-–|]*\bengineering\b",
+    r"\bengineering\b[^\-–|]*\b(manager|director|head|vp|vice president)\b",
+    r"\bcto\b",
+    r"\bengineering lead\b",
+    r"\btech lead\b",
+    r"\btlm\b",
+    r"\bfde lead\b",
 ]
-LEADERSHIP_RE = re.compile("|".join(LEADERSHIP_PATTERNS), re.IGNORECASE)
-# "platform" / "infrastructure" alone are too broad on a big board (lots of
-# plain IC "Software Engineer, Infrastructure" postings Jack isn't after),
-# so they only count with a leadership or staff/principal qualifier in the
-# same title -- this is the "staff or principal platform/infra only" rule.
-PLATFORM_INFRA_RE = re.compile(r"\b(platform|infrastructure)\b", re.IGNORECASE)
-LEADERSHIP_QUALIFIER_RE = re.compile(r"\b(manager|director|head|vp|lead)\b", re.IGNORECASE)
+LEADERSHIP_WORD_RE = re.compile("|".join(LEADERSHIP_PATTERNS), re.IGNORECASE)
+# (b) staff/principal combined with platform, infrastructure, SRE/
+#     reliability, or DevOps -- the "staff or principal platform/infra
+#     only" rule. Neither qualifier alone is enough.
 SENIOR_IC_QUALIFIER_RE = re.compile(r"\b(staff|principal)\b", re.IGNORECASE)
-# SRE/reliability and DevOps are standalone families: Jack takes these titles
-# at IC level too (per his infrastructure-engineer archetype), no seniority
-# qualifier required.
-SRE_DEVOPS_RE = re.compile(r"\bsre\b|\breliability\b|\bdevops\b", re.IGNORECASE)
+PLATFORM_INFRA_FAMILY_RE = re.compile(
+    r"\bplatform\b|\binfrastructure\b|\bsre\b|\breliability\b|\bdevops\b",
+    re.IGNORECASE,
+)
 # Non-software domains that happen to use "platform"/"infrastructure"/
 # "manager" etc. in a facilities, finance, go-to-market, or PM sense.
 DISQUALIFY_RE = re.compile(
@@ -90,7 +100,7 @@ DISQUALIFY_RE = re.compile(
     r"construction|real estate|workplace|product manager|program manager|"
     r"project manager|technical program manager|\btpm\b|developer relations|"
     r"evangelist|\beducation\b|documentation|accounting|\bcapex\b|"
-    r"data scientist|sourcing|deals lead|\bfp&a\b|sustainability|"
+    r"data scientist|data science|sourcing|deals lead|\bfp&a\b|sustainability|"
     r"partnerships|packaging|semiconductor",
     re.IGNORECASE,
 )
@@ -100,13 +110,9 @@ def title_matches(title):
     t = title or ""
     if DISQUALIFY_RE.search(t):
         return False
-    if LEADERSHIP_RE.search(t):
+    if LEADERSHIP_WORD_RE.search(t):
         return True
-    if SRE_DEVOPS_RE.search(t):
-        return True
-    if PLATFORM_INFRA_RE.search(t) and (
-        LEADERSHIP_QUALIFIER_RE.search(t) or SENIOR_IC_QUALIFIER_RE.search(t)
-    ):
+    if SENIOR_IC_QUALIFIER_RE.search(t) and PLATFORM_INFRA_FAMILY_RE.search(t):
         return True
     return False
 
@@ -269,11 +275,13 @@ def tracker_url_and_id_index(tracker_rows):
     return by_url, by_id
 
 
-def tracker_title_index(tracker_rows, stages):
+def tracker_title_index(tracker_rows):
+    """Map (company, normalized title) to its tracker row, across EVERY
+    stage -- live rows included. A title match on a live row is not a new
+    find (it's the same posting, possibly moved); a title match on an
+    archived row is a reopen/prior-outcome case. See module docstring."""
     idx = {}
     for row in tracker_rows:
-        if (row.get("stage") or "").strip() not in stages:
-            continue
         key = (row.get("company", "").strip().lower(), normalize_title(row.get("role", "")))
         idx[key] = row
     return idx
@@ -314,7 +322,7 @@ def main():
     watchlist = load_watchlist(watchlist_path)
     tracker_rows = load_tracker(tracker_path)
     by_url, by_id = tracker_url_and_id_index(tracker_rows)
-    archived_title_idx = tracker_title_index(tracker_rows, ARCHIVED_STAGES)
+    title_idx = tracker_title_index(tracker_rows)
     seen = load_seen(seen_path)
 
     writer = csv.writer(sys.stdout, delimiter="\t", lineterminator="\n")
@@ -356,24 +364,24 @@ def main():
                 continue
 
             if url in by_url or job_id in by_id:
-                continue  # already a live tracker row somewhere
+                continue  # already a live or archived tracker row, same posting
 
             title_key = (company.lower(), normalize_title(title))
-            archived = archived_title_idx.get(title_key)
+            matched = title_idx.get(title_key)
             seen_key = f"{company}::{ats}::{slug}::{job_id}"
 
-            if archived is not None:
+            if matched is not None:
+                stage = (matched.get("stage") or "").strip()
+                if stage == "closed":
+                    status = f"REOPENED {matched['id']}"
+                elif stage in ("rejected", "withdrawn"):
+                    status = f"PRIOR {stage} {matched['id']}"
+                else:
+                    # A live row (discovered..offer): same posting, moved ATS
+                    # or got a new id/URL. Not a new find, not auto-added.
+                    status = f"MOVED {matched['id']}"
                 writer.writerow(
-                    [
-                        f"REOPENED {archived['id']}",
-                        company,
-                        title,
-                        location,
-                        url,
-                        reason,
-                        contact,
-                        archived["id"],
-                    ]
+                    [status, company, title, location, url, reason, contact, matched["id"]]
                 )
                 new_seen_keys.append(seen_key)
                 continue
