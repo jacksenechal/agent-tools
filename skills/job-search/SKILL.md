@@ -240,23 +240,31 @@ Walk through the full pipeline for a new job posting end-to-end.
    now (one `sonnet` subagent, tier-1 section of
    `~/workspace/jobs/strategy/coherence-instrument.md`) and write `coh_cell`,
    `coh_derivative`, `coh_verdict`, `coh_date`, `coh_tags` on the row. `Pass` → `stage=withdrawn`, note
-   `coherence Pass`, stop. `Price` → continue, but carry the why-line into `job-posting.md`
-   "Notes" so the loop questions and the seat shape are visible from the first artifact.
-   `Advance` and `Unknown` → continue. A company vetted in the last 90 days is not re-vetted.
-   **State the read first.** Before the vet returns, the main thread writes its own read of
-   the company and of the seat, with its ground, into `job-posting.md` Notes (the brief's Read
-   line carries it forward). If the read and the vet verdict disagree, either way, the row goes
-   to tier 2 before a letter is spent (instrument, "The read").
+   `coherence Pass`, append the company to `~/workspace/jobs/strategy/skipped-companies.csv`
+   (see `strategy/auto-apply.md`), stop. `Price` → continue, but carry the why-line into
+   `job-posting.md` "Notes" so the loop questions and the seat shape are visible from the first
+   artifact. `Advance` and `Unknown` → continue. A company vetted in the last 90 days is not
+   re-vetted. **State the read first.** Before the vet returns, the main thread writes its own
+   read of the company and of the seat, with its ground, into `job-posting.md` Notes (the
+   brief's Read line carries it forward). If the read and the vet verdict disagree, either way,
+   the row goes to tier 2 before a letter is spent (instrument, "The read").
 5c2. **Work-life-balance filter.** Apply the "Hard filters" section of the private
    `~/workspace/jobs/strategy/leadership-search.md` using the vet's work/life sub-rating and
    any stated hours expectation (founder statements, the posting). A **fail** there →
    `stage=withdrawn`, note `wlb: <evidence>`, stop and archive. A **flag** → continue, and put
    the hours question at the top of the brief's "Needs Jack". This is independent of the
    coherence verdict: long hours sold honestly are not incoherence, but they still fail here.
+5c3. **Set the lane.** Write `lane` per `strategy/auto-apply.md` ("Lanes"): `personal` for a
+   held company, a first-degree company, a non-empty `referral_contact`, or `track=deep`;
+   `auto-proposed` for everything else that reaches this point. Both the held and first-degree
+   lists live in `strategy/auto-apply.md`, not here.
 5d. **Route the application.** Apply the routing rules in `references/application-tracks.md`
    and write `fast` or `deep` to the row's `track` column. This decides how much of the rest of
    Stage 1 runs, so do it here rather than discovering it later. On the fast track, skip step 6
-   (Glassdoor) and run step 7 as a single research pass rather than a parallel fan-out.
+   (Glassdoor) and run step 7 as a single research pass rather than a parallel fan-out. If this
+   sets `track=deep` and the lane above was already written as `auto-proposed`, correct it to
+   `personal` — track is decided in 5d, one step after the lane, so a late deep classification
+   still overrides.
 
 6. Research company on Glassdoor via a **haiku subagent**:
    - Spawn an Agent (model: haiku) with the task: "Navigate to `https://www.glassdoor.com/Search/results.htm?keyword=<URL-encoded-company-name>`. Snapshot results, click through to the company's Reviews page, snapshot the overview. Scroll and snapshot to capture more highlights. CAPTCHA RULE: if any snapshot shows a CAPTCHA or security challenge, STOP, navigate to google.com, and return 'CAPTCHA_DETECTED'. Otherwise, return verbatim: overall rating, CEO approval %, recommend-to-friend %, pros/cons summary, and 2-3 notable review snippets. Do not summarize."
@@ -584,18 +592,25 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
    LinkedIn per its safety protocol). Return the list verbatim with each job's site key.
 2. Diff against `tracker.csv` on `(source, key)` parsed from the `url` column. Never dedup on
    company + title: two distinct postings can share a title.
-3. For each new job: apply the geographic filter (see `scout`), append at `stage=discovered`,
-   run `vet` on the company if it has no `coh_verdict`, then run Stage 1 research and advance
-   to `stage=researched`. Synthesize the fit assessment **on the main thread (Opus)**.
-4. If more than 8 new jobs appear in one run, research the 8 with the strongest surface fit,
+3. **Skip-registry check.** Before researching a new find, look up its company in
+   `~/workspace/jobs/strategy/skipped-companies.csv`. If found and `revisit_after` is still in
+   the future, log it (company, when it reopens) and do not add the row. If `revisit_after` has
+   passed, or the company isn't listed, continue as normal — a reopened company gets vetted
+   fresh, not reused from the old row.
+4. For each new job that clears the skip check: apply the geographic filter (see `scout`),
+   append at `stage=discovered`, run `vet` on the company if it has no `coh_verdict`, then run
+   Stage 1 research and advance to `stage=researched`. Synthesize the fit assessment **on the
+   main thread (Opus)**.
+5. If more than 8 new jobs appear in one run, research the 8 with the strongest surface fit,
    leave the rest at `discovered`, and **say so explicitly** in the summary. Never silently cap.
-5. Commit and push the jobs repo. Append a run line to `orchestrator.log`.
-6. Rebuild and republish the tracker artifact: `python3 artifact/build.py`, then publish
+6. Commit and push the jobs repo. Append a run line to `orchestrator.log`.
+7. Rebuild and republish the tracker artifact: `python3 artifact/build.py`, then publish
    `artifact/tracker-view.html` with the Artifact tool to the pinned URL in `artifact/README.md`.
    Do this every run, even when zero new jobs were found, because the page's day-relative
    sections (needs you today, new since yesterday, aging, warnings) are derived from repo state
    that changes daily regardless of new finds.
-7. Print a one-screen summary: jobs added, fit read on each, obvious misfits worth pruning.
+8. Print a one-screen summary: jobs added, fit read on each, obvious misfits worth pruning, and
+   anything skipped under the registry.
 
 ### `scout [--minutes N] [--max M]` — Coherence-driven discovery
 
@@ -648,8 +663,10 @@ The instrument is in the private repo, `~/workspace/jobs/strategy/coherence-inst
    flags, growth absorption, Blind gap, seed read for small companies) and writes the columns
    plus a one-line note. Verdicts: `Advance`, `Price`, `Pass`, `Unknown`.
 3. `Pass` rows at `discovered` through `applied`: set `stage=withdrawn` with the note
-   `coherence Pass`. Rows at `interviewing` or `offer` keep their stage; write the verdict and
-   note only, and flag it in the summary for the user. `Unknown` rows keep the
+   `coherence Pass`, and append a row to `~/workspace/jobs/strategy/skipped-companies.csv`
+   (company, date, roll-up, reason, `revisit_after` = date + 6 months — see
+   `strategy/auto-apply.md`). Rows at `interviewing` or `offer` keep their stage; write the
+   verdict and note only, and flag it in the summary for the user. `Unknown` rows keep the
    seed read in the note. `Advance` rows are the candidates for `add`.
 4. Append the report to `~/workspace/jobs/strategy/coherence-cases.md` under a dated heading,
    and commit.

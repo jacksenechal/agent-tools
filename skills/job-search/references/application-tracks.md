@@ -22,7 +22,10 @@ The mistake is treating Deep as "Fast plus more research". The difference is who
 
 ## Routing
 
-Decided at `add` time, written to the `track` column, changeable by Jack at any point.
+Decided at `add` time, written to the `track` column, changeable by Jack at any point. `lane`
+(who submits: Jack or the pipeline, `strategy/auto-apply.md`) is a separate axis set right
+after, in the same `add` step — `track=deep` forces `lane=personal`, but a `fast` row can land
+in either lane.
 
 This was calibrated: nine completed applications were scored blind on the dimensions below,
 then checked against what their revisions actually fought. Two findings reshaped the rule.
