@@ -11,7 +11,7 @@ scout  ──►  vet  ──►  add (Stages 1-5)  ──►  user applies
 ```
 
 The framework itself (definition, mechanism, the eight dimensions, the probes) lives in the
-user's private repo, `~/workspace/jobs/strategy/coherence.md`; the runnable instrument in
+user's private repo, `$JOBS_DIR/strategy/coherence.md`; the runnable instrument in
 `coherence-instrument.md`; the scored cases in `coherence-cases.md`. This file is the operating
 procedure. It carries no personal data.
 

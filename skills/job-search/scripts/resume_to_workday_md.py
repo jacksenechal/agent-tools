@@ -126,7 +126,7 @@ extractor reads hyperlink *targets* in the uploaded docx, and the per-job docx h
 markdown link was stripped to its plain visible text). Also the docx carried the Google Voice
 number, which then has to be manually overwritten with the cell on every application. Three
 fixes, none hardcoding personal details (values are passed by the caller, e.g. from
-~/workspace/jobs/profile.md):
+profile.md in your jobs repo):
   - Contact lines that are markdown links (`[text](url)`) or `<url>` autolinks are now emitted
     as real markdown links with the visible text set to the URL itself, so pandoc renders a real
     docx hyperlink and Workday's Websites field has something to extract. See

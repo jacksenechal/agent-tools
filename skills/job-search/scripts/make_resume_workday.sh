@@ -11,7 +11,7 @@
 #
 # This script is general-purpose and contains NO personal details. The applicant name must
 # be supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var
-# (source it from your private profile, e.g. ~/workspace/jobs/profile.md). The script errors
+# (source it from your private profile, e.g. profile.md in your jobs repo). The script errors
 # if no name is given. --phone, --edu-start, and --link work the same way: values come from the
 # caller (profile.md), never hardcoded here.
 #
@@ -114,7 +114,7 @@ fi
 
 if [[ -z "$NAME" ]]; then
   echo "Error: applicant name required. Pass --name \"...\" or set \$JOB_SEARCH_APPLICANT_NAME" >&2
-  echo "       (source it from your private profile, e.g. ~/workspace/jobs/profile.md)." >&2
+  echo "       (source it from your private profile, e.g. profile.md in your jobs repo)." >&2
   exit 1
 fi
 

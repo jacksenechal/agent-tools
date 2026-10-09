@@ -29,7 +29,8 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_TRACKER = "~/workspace/jobs/tracker.csv"
+import jobsearch_paths
+
 PRE_APPLIED_STAGES = {
     "discovered",
     "researched",
@@ -164,8 +165,8 @@ def check_row(row, timeout):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--tracker", default=DEFAULT_TRACKER,
-                     help=f"path to tracker.csv (default: {DEFAULT_TRACKER})")
+    ap.add_argument("--tracker", default=None,
+                     help="path to tracker.csv (default: tracker.csv in the jobs repo; see jobsearch_paths.py)")
     ap.add_argument("--out", default=None, help="write TSV here instead of stdout")
     ap.add_argument("--timeout", type=float, default=TIMEOUT_DEFAULT,
                      help=f"per-request timeout in seconds (default: {TIMEOUT_DEFAULT})")
@@ -174,7 +175,7 @@ def main():
     args = ap.parse_args()
 
     import os
-    tracker_path = os.path.expanduser(args.tracker)
+    tracker_path = os.path.expanduser(args.tracker or os.path.join(jobsearch_paths.jobs_dir(), "tracker.csv"))
     try:
         with open(tracker_path, newline="", encoding="utf-8") as f:
             rows = list(csv.DictReader(f))

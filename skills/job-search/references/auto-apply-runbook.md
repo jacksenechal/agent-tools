@@ -4,7 +4,7 @@ Fills and (once live) submits applications for rows Jack has approved into the `
 Framework and lane rules: the private repo's `strategy/auto-apply.md`. This is the mechanical
 procedure the `apply` mode runs.
 
-**Mode switch**: `~/workspace/jobs/auto-apply.json` — `{"mode": "shadow"|"live"|"paused",
+**Mode switch**: `$JOBS_DIR/auto-apply.json` — `{"mode": "shadow"|"live"|"paused",
 "daily_cap": N, "max_live_per_company": N}`. Only Jack edits this file. Read it once at the
 start of the run and again before every Submit click (step h) — never cache the mode across a
 long run.
@@ -82,7 +82,7 @@ Hightouch's own site. Before filling:
 - Screenshot the **form or iframe element itself**, section by section — a full-page screenshot
   gets covered by sticky site headers (Hightouch spike finding). Since the repo is mounted into
   the container at the same absolute path, `browser_run_code` with
-  `page.screenshot({path: "/home/jack/workspace/jobs/applications/<id>/submission/NN-<step>.png"})`
+  `page.screenshot({path: "<absolute $JOBS_DIR>/applications/<id>/submission/NN-<step>.png"})`
   or a locator's `.screenshot({path})` writes directly there — no `docker cp` needed (unlike the
   spike, which predated the identical-path mount fix).
 - After each file upload, **verify the filename in the snapshot**: the accessibility tree should
@@ -150,7 +150,7 @@ warn on a sibling role. See `strategy/auto-apply.md`, "Application limits".
 ## (j) Commit, push, republish
 
 ```bash
-cd ~/workspace/jobs
+cd $JOBS_DIR
 git pull --rebase
 git add -A
 git commit -m "Auto-apply run: <N> rows (<shadow|live>)"

@@ -29,7 +29,8 @@ for arg in "$@"; do
   esac
 done
 
-JOBS_DIR="${JOBS_DIR:-$HOME/workspace/jobs}"
+source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+jobsearch_require_jobs_dir || exit 2
 LOCKFILE="$JOBS_DIR/.orchestrator.lock"
 LOGFILE="$JOBS_DIR/orchestrator.log"
 FAILCOUNT_FILE="$JOBS_DIR/.orchestrator-fails-$MODE"
@@ -71,9 +72,11 @@ fi
 # The host-side way to bring the container up is docker compose in the playwright-docker
 # skill's assets dir.
 if [[ "$MODE" != "network" ]]; then
-  PW_ASSETS="${PW_ASSETS:-$HOME/.claude/skills/playwright-docker/assets}"
-  # The compose file binds ${RESUME_REPO_PATH} as a volume, so it must be set or compose fails.
-  export RESUME_REPO_PATH="${RESUME_REPO_PATH:-$HOME/workspace/resume}"
+  # The playwright-docker skill normally sits beside this one; PW_ASSETS overrides.
+  PW_ASSETS="${PW_ASSETS:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/playwright-docker/assets}"
+  # The compose file binds both repos as volumes at their host paths, so both must be set.
+  jobsearch_require_resume_dir || exit 2
+  export RESUME_REPO_PATH="$RESUME_DIR" JOBS_REPO_PATH="$JOBS_DIR"
 
   browser_up() {
     docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "playwright-display"

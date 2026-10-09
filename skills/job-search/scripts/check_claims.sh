@@ -12,8 +12,8 @@
 
 set -uo pipefail
 
-JOBS_DIR="${JOBS_DIR:-$HOME/workspace/jobs}"
-RESUME_DIR="${RESUME_DIR:-$HOME/workspace/resume}"
+source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+jobsearch_require_jobs_dir || exit 2
 GUARDS="${CLAIM_GUARDS:-$JOBS_DIR/strategy/claim-guards.txt}"
 
 [[ -f "$GUARDS" ]] || { echo "check_claims: no guards file at $GUARDS" >&2; exit 2; }

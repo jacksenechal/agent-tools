@@ -22,7 +22,7 @@ manages it:
 Manual controls:
 
 ```bash
-CTL=~/workspace/agent-tools/skills/job-search/scripts/arcadedb_ctl.sh
+CTL=<skill-dir>/scripts/arcadedb_ctl.sh
 $CTL status         # container + heartbeat + timer state
 $CTL ensure         # start now (rarely needed; the scripts do this)
 $CTL stop           # stop now
@@ -38,7 +38,7 @@ Override the idle window per-invocation, e.g. `JOB_SEARCH_ARCADEDB_IDLE=21600 $C
 The ingest step below starts it for you. To start manually:
 
 ```bash
-~/workspace/agent-tools/skills/job-search/scripts/arcadedb_ctl.sh ensure
+<skill-dir>/scripts/arcadedb_ctl.sh ensure
 ```
 
 Verify: `curl -s http://localhost:2480/api/v1/server -u root:playwithdata`
@@ -48,7 +48,7 @@ Verify: `curl -s http://localhost:2480/api/v1/server -u root:playwithdata`
 Settings & Privacy → Data Privacy → Get a copy of your data. Request:
 - Connections, Messages, Positions, Education
 
-Extract CSVs to `~/workspace/jobs/data/linkedin/`:
+Extract CSVs to `$JOBS_DIR/data/linkedin/`:
 - `Connections.csv` — 1st-degree connections
 - `Messages.csv` — message history
 - `Positions.csv` — your own work history (for shared-employer bonus)
@@ -58,8 +58,8 @@ Extract CSVs to `~/workspace/jobs/data/linkedin/`:
 
 Run from your job-search repo root:
 ```bash
-cd ~/workspace/jobs
-python3 ~/workspace/agent-tools/skills/job-search/scripts/ingest_linkedin.py --me-name "Your Full Name"
+cd $JOBS_DIR
+python3 <skill-dir>/scripts/ingest_linkedin.py --me-name "Your Full Name"
 ```
 
 `--me-name` must match your name exactly as it appears in LinkedIn message exports (used to
@@ -98,7 +98,7 @@ Interpretation:
 ## Querying
 
 ```bash
-python3 ~/workspace/agent-tools/skills/job-search/scripts/query_connections.py "Company Name"
+python3 <skill-dir>/scripts/query_connections.py "Company Name"
 ```
 
 Returns 1st-degree connections currently at the company, ranked by warmth.

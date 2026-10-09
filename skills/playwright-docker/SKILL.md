@@ -15,7 +15,8 @@ Manages a Dockerized Playwright + noVNC browser for Claude Code automation. Buil
 [xtr-dev/mcp-playwright-novnc](https://github.com/xtr-dev/mcp-playwright-novnc) (git
 submodule) with minimal modifications for Claude Code compatibility.
 
-**Assets location**: `~/workspace/agent-tools/skills/playwright-docker/assets/`
+**Assets location**: `<skill-dir>/assets/`, where `<skill-dir>` is this skill's base directory
+(shown when the skill loads). Never hard-code a path to it, or to any repo, in this skill.
 
 ## Architecture
 
@@ -59,24 +60,24 @@ overlay changes without modifying it:
 
 Before any sub-command, ensure the submodule is initialized and the image exists.
 
-**All `docker compose` commands require `RESUME_REPO_PATH`** (the compose file mounts it
-as a volume). Set it before every docker compose invocation:
+**All `docker compose` commands require `RESUME_REPO_PATH` and `JOBS_REPO_PATH`** (the
+compose file mounts both repos as volumes: the résumé repo for the canonical résumé, the jobs
+repo for per-job tailored résumés at `applications/<id>/`). Set them before every docker compose
+invocation. With the `job-search` skill installed, its path resolver gives both:
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume
+source <job-search-skill-dir>/scripts/paths.sh
+export RESUME_REPO_PATH="$RESUME_DIR" JOBS_REPO_PATH="$JOBS_DIR"
 ```
 
-The jobs repo is also mounted (for per-job tailored résumé uploads at
-`applications/<id>/resume.pdf`); it defaults to `~/workspace/jobs`, so `JOBS_REPO_PATH` only
-needs setting if that repo lives elsewhere.
+Otherwise export them to the two repos' absolute paths directly.
 
 ```bash
 # Initialize submodule (no-op if already present)
-cd ~/workspace/agent-tools
-git submodule update --init skills/playwright-docker/assets/mcp-playwright-novnc
+git -C <skill-dir> submodule update --init assets/mcp-playwright-novnc
 
 # Build image (uses cache if unchanged, safe to run repeatedly)
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose build
 ```
 
@@ -89,10 +90,9 @@ Run once to start the container and wire up the MCP server in Claude Code.
 #### 1. Build and start the container
 
 ```bash
-cd ~/workspace/agent-tools
-git submodule update --init skills/playwright-docker/assets/mcp-playwright-novnc
+git -C <skill-dir> submodule update --init assets/mcp-playwright-novnc
 
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose up -d --build
 ```
 
@@ -160,7 +160,7 @@ at process startup, so after exporting you need to restart the container for iso
 sessions to pick up the new auth state:
 
 ```bash
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose restart
 ```
 
@@ -186,21 +186,21 @@ The golden browser process continues running in the container (logins persist).
 ### `start` — Start the container
 
 ```bash
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose up -d --build
 ```
 
 ### `stop` — Stop the container
 
 ```bash
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose down
 ```
 
 ### `restart` — Restart the container
 
 ```bash
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose restart
 ```
 
@@ -226,10 +226,9 @@ Also confirm MCP connectivity: `mcp__playwright__browser_navigate` to `https://g
 ### `update` — Pull upstream changes
 
 ```bash
-cd ~/workspace/agent-tools
-git submodule update --remote skills/playwright-docker/assets/mcp-playwright-novnc
+git -C <skill-dir> submodule update --remote assets/mcp-playwright-novnc
 
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+cd <skill-dir>/assets
 docker compose up -d --build
 ```
 
@@ -295,22 +294,21 @@ Once set up, use `mcp__playwright__` tools in any skill or task:
 ### File uploads
 
 As of the 2026-10-05 recreate, `docker-compose.yml` mounts both repos read-only at their
-**identical host paths** inside the container: `~/workspace/jobs` → `/home/jack/workspace/jobs`
-and `~/workspace/resume` → `/home/jack/workspace/resume` (not `/home/pwuser/...` or
-`/home/node/...`). Verify before relying on this — `docker inspect playwright-display --format
+**identical host paths** inside the container: `$JOBS_REPO_PATH` and `$RESUME_REPO_PATH` are
+mounted at those same absolute paths (not under `/home/pwuser/...` or `/home/node/...`). Verify before relying on this — `docker inspect playwright-display --format
 '{{json .Mounts}}'` is the ground truth, not this file.
 
 The identical-path mount exists because of how `browser_file_upload`'s path check is split
 across two layers that otherwise disagree:
 - The **allowlist check** runs on the harness side (Claude Code's own MCP "roots"), which only
-  knows real host paths — in practice, the agent's own working directory (e.g.
-  `/home/jack/workspace/jobs`) plus the MCP server's declared output dir
+  knows real host paths — in practice, the agent's own working directory (e.g. the jobs repo)
+  plus the MCP server's declared output dir
   (`/tmp/.playwright-mcp-golden`).
 - The **actual file read** happens inside the container's mount namespace, which only sees
   whatever `docker-compose.yml` bind-mounted and only at the path it was mounted to.
 
 Before the fix, the compose file mounted the jobs repo at `/home/node/jobs`: the allowlist check
-(host-side) approved `/home/jack/workspace/jobs/...` since that's the agent's real working
+(host-side) approved `$JOBS_REPO_PATH/...` since that's the agent's real working
 directory, but the container couldn't find that path (only `/home/node/jobs` existed there) —
 `ENOENT`. Giving the container path instead failed the allowlist check first (`"outside allowed
 roots"`), since the harness didn't recognize `/home/node/...` as anything. Mounting at the same
@@ -319,7 +317,7 @@ host path:
 
 ```
 mcp__playwright-golden__browser_file_upload
-  paths: ["/home/jack/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"]
+  paths: ["<absolute $JOBS_REPO_PATH>/applications/<id>/Resume - <Name> - <Role>.pdf"]
 ```
 
 No `docker cp` step needed — the path resolves on both sides of the mount.
@@ -358,8 +356,8 @@ The container is configured with `restart: unless-stopped`, so it survives reboo
 The golden session's browser profile persists across restarts via a Docker named volume.
 
 ```bash
-export RESUME_REPO_PATH=~/workspace/resume
-cd ~/workspace/agent-tools/skills/playwright-docker/assets
+export RESUME_REPO_PATH=... JOBS_REPO_PATH=...   # see "Before any sub-command" above
+cd <skill-dir>/assets
 
 docker compose up -d --build  # Start/rebuild
 docker compose restart        # Restart (reconnect MCP after)

@@ -3,7 +3,7 @@
 A long-running background loop that keeps the pipeline fed and current without the user
 driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
 sync** (`liveness`, Sundays 10:00), a **weekly North Bay re-scout** (`northbay`, Tuesdays
-09:00, which runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end), and a **weekly
+09:00, which runs `$JOBS_DIR/strategy/north-bay-rescout.md` end to end), and a **weekly
 networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below). A fifth mode,
 **auto-apply** (`apply`), exists but is **not installed as a timer yet** — Jack runs it by hand
 until he's seen enough runs to trust the schedule (see "Auto-apply" below).
@@ -36,7 +36,7 @@ than skipping the day.
 
 ## Source registry
 
-Saved-list sources live in `~/workspace/jobs/sources.json` so new ones can be added without
+Saved-list sources live in `$JOBS_DIR/sources.json` so new ones can be added without
 touching the skill. Shape:
 
 ```json
@@ -92,7 +92,7 @@ Runs once a day at a randomized time (see Scheduling).
    `missing` result before closing it — see "Weekly: liveness + sync" below, "Resolve before
    closing"; the daily check and the weekly sweep share that rule.
 5b. **Watchlist poll.** Run `scripts/watch_companies.py` against
-   `~/workspace/jobs/strategy/watchlist.csv` (held, first-degree, and high-coherence
+   `$JOBS_DIR/strategy/watchlist.csv` (held, first-degree, and high-coherence
    companies with a public Greenhouse/Ashby/Lever board — see SKILL.md "discover" step 5c for
    the full procedure and what each status means). `NEW` matches go through `add`; `MOVED <id>`
    is a liveness signal on a live row, not a new find; `REOPENED <id>` matches go through the
@@ -119,7 +119,7 @@ explicitly in the notification. Never silently truncate.
 
 ### Watchlist, `ats=none` companies
 
-`~/workspace/jobs/strategy/watchlist.csv` rows with `ats=none` (Workday, a custom careers
+`$JOBS_DIR/strategy/watchlist.csv` rows with `ats=none` (Workday, a custom careers
 site) have no public board API for the daily poll to hit, so this weekly run checks them by
 browser instead: one `golden`-browser visit per `none` company's careers page, title-filtered
 and geo-filtered the same way as `scripts/watch_companies.py` (SKILL.md "discover" step 5c).
@@ -240,7 +240,7 @@ since bookmarks persist.
 
 ## Concurrency and safety
 
-- **Lockfile** at `~/workspace/jobs/.orchestrator.lock`. If held, exit immediately. Prevents
+- **Lockfile** at `$JOBS_DIR/.orchestrator.lock`. If held, exit immediately. Prevents
   a long discovery run from colliding with the weekly sweep, and prevents self-overlap.
 - **Page budget is per run**, not per day. The 25-load LinkedIn ceiling applies to each
   invocation, and LinkedIn writes count double.
@@ -250,7 +250,7 @@ since bookmarks persist.
   state, and saved-list bookkeeping. Applying is always a human action.
 - **Every run is idempotent.** Re-running after a crash must not double-add rows. The
   `(source, key)` dedup makes this safe.
-- **Audit.** Append one line per run to `~/workspace/jobs/orchestrator.log`: timestamp, mode,
+- **Audit.** Append one line per run to `$JOBS_DIR/orchestrator.log`: timestamp, mode,
   sources scraped, jobs added, stages changed, writes performed, page-load count.
 
 ## Permissions (read this before the first scheduled run)
@@ -258,7 +258,7 @@ since bookmarks persist.
 The loop invokes `claude -p ... --permission-mode acceptEdits`. In headless mode there is no
 human to answer a permission prompt, so **any tool call that is not pre-approved fails rather
 than waiting**. Before enabling the timers, allowlist what the loop actually needs in
-`~/workspace/jobs/.claude/settings.json`:
+`$JOBS_DIR/.claude/settings.json`:
 
 - the `mcp__playwright-golden__*` browser tools
 - `Bash(git add:*)`, `Bash(git commit:*)`, `Bash(git push:*)`, `Bash(python3:*)`
@@ -270,8 +270,8 @@ session and push access to two repos is exactly the thing that should keep its g
 Verify with a manual foreground run before trusting the schedule:
 
 ```bash
-~/workspace/agent-tools/skills/job-search/scripts/orchestrator.sh discover --force --dry-run
-~/workspace/agent-tools/skills/job-search/scripts/orchestrator.sh discover --force
+<skill-dir>/scripts/orchestrator.sh discover --force --dry-run
+<skill-dir>/scripts/orchestrator.sh discover --force
 ```
 
 ## Failure handling

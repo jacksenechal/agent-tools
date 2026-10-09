@@ -50,9 +50,12 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_WATCHLIST = "~/workspace/jobs/strategy/watchlist.csv"
-DEFAULT_TRACKER = "~/workspace/jobs/tracker.csv"
-DEFAULT_SEEN = "~/workspace/jobs/data/watchlist-seen.json"
+import jobsearch_paths
+
+# Defaults are relative to the jobs repo (resolved by jobsearch_paths at run time).
+DEFAULT_WATCHLIST = "strategy/watchlist.csv"
+DEFAULT_TRACKER = "tracker.csv"
+DEFAULT_SEEN = "data/watchlist-seen.json"
 USER_AGENT = "Mozilla/5.0 (compatible; job-search-watchlist/1.0)"
 TIMEOUT_DEFAULT = 10
 
@@ -315,9 +318,15 @@ def main():
     )
     args = ap.parse_args()
 
-    watchlist_path = os.path.expanduser(args.watchlist)
-    tracker_path = os.path.expanduser(args.tracker)
-    seen_path = os.path.expanduser(args.seen)
+    # Defaults resolve against the jobs repo; explicit paths are taken as given.
+    def resolve(p, default):
+        if p == default:
+            return os.path.join(jobsearch_paths.jobs_dir(), p)
+        return os.path.expanduser(p)
+
+    watchlist_path = resolve(args.watchlist, DEFAULT_WATCHLIST)
+    tracker_path = resolve(args.tracker, DEFAULT_TRACKER)
+    seen_path = resolve(args.seen, DEFAULT_SEEN)
 
     watchlist = load_watchlist(watchlist_path)
     tracker_rows = load_tracker(tracker_path)
