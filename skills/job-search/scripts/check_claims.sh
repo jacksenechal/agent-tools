@@ -12,6 +12,12 @@
 
 set -uo pipefail
 
+# The dash check greps for Unicode code points, which grep rejects under a non-UTF-8 locale
+# (the default in many containers), silently skipping the check. Force a UTF-8 locale.
+if [[ "$(locale charmap 2>/dev/null)" != "UTF-8" ]]; then
+  export LC_ALL=C.UTF-8
+fi
+
 source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
 jobsearch_require_jobs_dir || exit 2
 GUARDS="${CLAIM_GUARDS:-$JOBS_DIR/strategy/claim-guards.txt}"
