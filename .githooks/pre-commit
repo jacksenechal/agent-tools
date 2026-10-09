@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Enable with: git config core.hooksPath .githooks
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM)
+(( ${#staged[@]} )) || exit 0
+exec "$(git rev-parse --show-toplevel)/scripts/check_no_hardcoded_paths.sh" "${staged[@]}"
