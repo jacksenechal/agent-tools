@@ -17,8 +17,8 @@ conditional on "looks done" or "test mode."
   `http://localhost:6080/vnc.html`; never enter credentials yourself).
 - File uploads: see `playwright-docker` skill's "File uploads" section for the current allowed
   path. As of 2026-10-05 the jobs and resume repos are bind-mounted at their identical host
-  paths, so `browser_file_upload` works directly from `~/workspace/jobs/...` and
-  `~/workspace/resume/...` paths. If a path gets rejected as "outside allowed roots" or comes
+  paths, so `browser_file_upload` works directly from `$JOBS_DIR/...` and
+  `$RESUME_DIR/...` paths. If a path gets rejected as "outside allowed roots" or comes
   back `ENOENT`, re-read that section before improvising — it explains which of the two layers
   (harness allowlist vs. container filesystem) is actually failing, and the first fallback is
   `/tmp/.playwright-mcp-golden/` (always allowed; `docker cp` a file there, upload from there).
@@ -34,7 +34,7 @@ conditional on "looks done" or "test mode."
 3. Render the parser-shaped `.docx`, passing the cell phone, education start year, and website
    link from `profile.md` so the docx doesn't need manual fixing after upload:
    ```bash
-   ~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh <resume.md> \
+   <skill-dir>/scripts/make_resume_workday.sh <resume.md> \
      --name "Jack Senechal" \
      --phone "<cell from profile.md>" \
      --edu-start <year from profile.md> \

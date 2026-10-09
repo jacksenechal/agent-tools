@@ -15,11 +15,13 @@
 #
 # Usage: sync_archetypes.sh [--no-push] [--dry-run]
 #
-# Env: RESUME_REPO_PATH (default ~/workspace/resume)
+# Env: RESUME_DIR (or RESUME_REPO_PATH); see paths.sh for how it is resolved
 
 set -uo pipefail
 
-REPO="${RESUME_REPO_PATH:-$HOME/workspace/resume}"
+source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+jobsearch_require_resume_dir || exit 2
+REPO="$RESUME_DIR"
 GENERATED_RE='^(index\.html|resume\.pdf)$'
 PUSH=1
 DRY=0

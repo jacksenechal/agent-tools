@@ -1,6 +1,6 @@
 # Tracker CSV Schema
 
-File: `~/workspace/jobs/tracker.csv`
+File: `$JOBS_DIR/tracker.csv`
 
 ## Fields
 
@@ -26,11 +26,11 @@ File: `~/workspace/jobs/tracker.csv`
 | `coh_date` | date | no | ISO date of the coherence read |
 | `coh_tags` | string | no | Comma-separated tags naming what produced the verdict, from the controlled vocabulary in `jobs/strategy/coherence-instrument.md` ("Roll-up: level, trend, tags"): flags (`pe`, `acquired`, `founder-exit`, `exec-change`, `layoffs`, `contraction`, `decoupled`, `growth`), gaps (`ceiling 0.4`, `blind-gap`, `seams`, `channel`, `seed`), evidence (`thin`, `young`, `inside`, `tier2`). Empty is valid. The view derives the level (`high`/`mid`/`low`/`?`) from `coh_cell`, the trend glyph from `coh_derivative`, and the shape tags `disconnected`/`incoherent` from the cell; none of those are stored |
 | `track` | enum | no | `fast` or `deep`. How much attention this application gets, decided at `add` time and overridable by the user at any point. Empty means not yet routed. See `references/application-tracks.md` |
-| `lane` | enum | no | `skip`, `personal`, `auto-proposed`, `auto`, or empty. Who drives the application from here on; set at `add` time, after the vet. See `~/workspace/jobs/strategy/auto-apply.md` for the rules (held/first-degree companies, the skip registry, the approval flow). |
-| `fit` | string | no | `<grade>: <reason>`. Grade is `strong`, `solid`, or `stretch`: Jack in the role, not the company (coherence is separate). Reason is ~12 words naming what decided the grade. Set at `add` time, right after the vet. See `~/workspace/jobs/strategy/auto-apply.md` ("Fit grade") for the rubric and anchors. Empty for archived/closed rows that predate the column. The column sits last in the file. |
+| `lane` | enum | no | `skip`, `personal`, `auto-proposed`, `auto`, or empty. Who drives the application from here on; set at `add` time, after the vet. See `$JOBS_DIR/strategy/auto-apply.md` for the rules (held/first-degree companies, the skip registry, the approval flow). |
+| `fit` | string | no | `<grade>: <reason>`. Grade is `strong`, `solid`, or `stretch`: Jack in the role, not the company (coherence is separate). Reason is ~12 words naming what decided the grade. Set at `add` time, right after the vet. See `$JOBS_DIR/strategy/auto-apply.md` ("Fit grade") for the rubric and anchors. Empty for archived/closed rows that predate the column. The column sits last in the file. |
 
 `referral_contact` and `referral_status` are written by the networking track
-(`~/workspace/jobs/strategy/networking/`) when a real contact exists, not by `add`. `add`
+(`$JOBS_DIR/strategy/networking/`) when a real contact exists, not by `add`. `add`
 only reads `strategy/networking/people.md` for an existing warm contact and copies it in if
 present; there is no per-application connection search.
 

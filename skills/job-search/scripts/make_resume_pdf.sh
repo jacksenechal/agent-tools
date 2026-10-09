@@ -8,7 +8,7 @@
 #
 # This script is general-purpose and contains NO personal details. The applicant name must
 # be supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var
-# (source it from your private profile, e.g. ~/workspace/jobs/profile.md). The script errors
+# (source it from your private profile, e.g. profile.md in your jobs repo). The script errors
 # if no name is given. The name is used ONLY for the HTML page title (document metadata); the
 # visible name/title on the page comes from the résumé markdown's own leading H1, exactly as
 # in the canonical résumé.
@@ -61,7 +61,7 @@ fi
 
 if [[ -z "$NAME" ]]; then
   echo "Error: applicant name required. Pass --name \"...\" or set \$JOB_SEARCH_APPLICANT_NAME" >&2
-  echo "       (source it from your private profile, e.g. ~/workspace/jobs/profile.md)." >&2
+  echo "       (source it from your private profile, e.g. profile.md in your jobs repo)." >&2
   exit 1
 fi
 
@@ -71,6 +71,9 @@ for c in google-chrome-stable google-chrome chromium chromium-browser; do
   if command -v "$c" >/dev/null 2>&1; then CHROME="$c"; break; fi
 done
 if [[ -z "$CHROME" ]]; then echo "Error: no Chrome/Chromium binary found." >&2; exit 1; fi
+# Chrome refuses to start as root (containers, cloud sessions) unless its sandbox is disabled.
+CHROME_ARGS=()
+[[ "$(id -u)" -eq 0 ]] && CHROME_ARGS+=(--no-sandbox)
 command -v pandoc >/dev/null 2>&1 || { echo "Error: pandoc not found." >&2; exit 1; }
 
 TMP="$(mktemp -d)"
@@ -147,7 +150,7 @@ pandoc "$INPUT" -o "$TMP/out.html" -t html5 -f markdown+smart --standalone \
   "${AFTER_ARGS[@]}" \
   --variable="pagetitle:Resume :: ${NAME}"
 
-"$CHROME" --headless --disable-gpu --no-pdf-header-footer \
+"$CHROME" "${CHROME_ARGS[@]}" --headless --disable-gpu --no-pdf-header-footer \
   --print-to-pdf="$OUTPUT" "$TMP/out.html" >/dev/null 2>&1
 
 echo "Wrote: $OUTPUT"

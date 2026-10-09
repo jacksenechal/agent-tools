@@ -54,26 +54,45 @@ roughly 07:20. See those sub-commands below, and `watch setup` to install the ti
 
 ## Project Locations
 
-- **Job search repo**: `~/workspace/jobs/` (private GitHub repo)
-- **Tracker**: `~/workspace/jobs/tracker.csv`
-- **Job research**: `~/workspace/jobs/applications/<id>/`
-- **Archived job research** (dead tracker rows): `~/workspace/jobs/applications/archived/<id>/`
-- **Resume repo**: `~/workspace/resume/` (separate git repo, **public**). Holds only `main` (the
+This skill never assumes a directory layout. Paths are written with these names:
+
+| Name | What it is | How it is found |
+|---|---|---|
+| `<skill-dir>` | this skill's own directory (`scripts/`, `references/`, `assets/`) | the base directory shown when the skill loads |
+| `$JOBS_DIR` | the user's **private** job-search repo | env var, then `~/.config/job-search/paths.env`, then the git repo containing the current directory if it has `tracker.csv` |
+| `$RESUME_DIR` | the résumé repo | env var, then `paths.env`, then a `resume/` sibling of `$JOBS_DIR` |
+| `$SITE_DIR` | the user's public website repo (optional) | env var, then `paths.env`; skip it when unset |
+
+The scripts resolve these themselves through `scripts/paths.sh` (bash) and
+`scripts/jobsearch_paths.py` (Python), so a script call needs no path setup when run from inside
+the jobs repo. When you need a value for a command of your own, get it the same way:
+`source <skill-dir>/scripts/paths.sh && echo "$JOBS_DIR $RESUME_DIR $SITE_DIR"`.
+
+**Do not reintroduce hard-coded paths** (a fixed workspace directory under the home folder, a
+specific user's home directory, or any other assumed layout) anywhere in this skill: not in
+docs, scripts, assets, examples, or comments. Use the names above, and add new locations to
+`paths.sh`/`jobsearch_paths.py` rather than inline. The repo's
+`scripts/check_no_hardcoded_paths.sh` enforces this (see the repo's `AGENTS.md`).
+
+- **Job search repo**: `$JOBS_DIR/` (private GitHub repo)
+- **Tracker**: `$JOBS_DIR/tracker.csv`
+- **Job research**: `$JOBS_DIR/applications/<id>/`
+- **Archived job research** (dead tracker rows): `$JOBS_DIR/applications/archived/<id>/`
+- **Resume repo**: `$RESUME_DIR/` (separate git repo, **public**). Holds only `main` (the
   canonical résumé, source of truth) and `role/*` **archetypes** (generic role positionings, no
   company names). **Read-only from here** — per-job tailoring must NOT create branches here (that
   would publicly expose the application list). Read without checking out:
-  `git -C ~/workspace/resume show main:resume.md` or `git -C ~/workspace/resume show role/<name>:resume.md`.
+  `git -C $RESUME_DIR show main:resume.md` or `git -C $RESUME_DIR show role/<name>:resume.md`.
 - **Per-job résumé** (in the private jobs repo): `applications/<id>/resume.md` (tailored markdown)
   and `applications/<id>/resume.pdf` (rendered). Tailoring happens here, not in the resume repo.
-- **Canonical facts**: `~/workspace/jobs/strategy/facts.md` — atomic, sourced claims plus the
+- **Canonical facts**: `$JOBS_DIR/strategy/facts.md` — atomic, sourced claims plus the
   "do NOT claim" guardrails. The reference for verifiable particulars, not a menu to draft from.
-- **Project narratives and framing constraints**: `~/workspace/jobs/strategy/narrative.md`
-- **Voice profile**: `~/workspace/jobs/strategy/voice-profile.md` — how Jack actually writes.
+- **Project narratives and framing constraints**: `$JOBS_DIR/strategy/narrative.md`
+- **Voice profile**: `$JOBS_DIR/strategy/voice-profile.md` — how Jack actually writes.
   Draft externally-facing text from this; the slop pass checks against it. Governs *how it
   sounds*, as facts.md governs *what is true*.
-- **Banned claim strings**: `~/workspace/jobs/strategy/claim-guards.txt`
-- **Personal website**: `~/workspace/jacksenechal.com/` (Jekyll, **public**:
-  github.com/jacksenechal/jacksenechal.com). A named source for the fact check: anything here
+- **Banned claim strings**: `$JOBS_DIR/strategy/claim-guards.txt`
+- **Personal website**: `$SITE_DIR/` (optional, **public**). A named source for the fact check: anything here
   is already public and citable, and outward claims must not contradict it.
 - **LinkedIn safety rules**: See `references/linkedin-safety.md` — READ THIS before any LinkedIn browsing
 - **External output gate**: See `references/external-output-gate.md` — READ THIS before drafting
@@ -204,7 +223,7 @@ Walk through the full pipeline for a new job posting end-to-end.
 **Stage 1: Discover & Research**
 
 1. Generate an `id` slug (e.g., `stripe-infra-eng`, `aircall-ai-eng`). Short, semantic, unique. Do NOT ask the user.
-2. Create `~/workspace/jobs/applications/<id>/`. If `applications/archived/<id>/` already
+2. Create `$JOBS_DIR/applications/<id>/`. If `applications/archived/<id>/` already
    exists, move it back instead of starting fresh (see "Archiving").
 3. Add row to `tracker.csv`: `stage=discovered`, `date_found=today`
 4. Scrape the job posting via a **haiku subagent**:
@@ -241,9 +260,9 @@ Walk through the full pipeline for a new job posting end-to-end.
    on the way out (see "Archiving").
 5c. **Coherence read.** If no row for this company has a `coh_verdict`, run `vet <company>`
    now (one `sonnet` subagent, tier-1 section of
-   `~/workspace/jobs/strategy/coherence-instrument.md`) and write `coh_cell`,
+   `$JOBS_DIR/strategy/coherence-instrument.md`) and write `coh_cell`,
    `coh_derivative`, `coh_verdict`, `coh_date`, `coh_tags` on the row. `Pass` → `stage=withdrawn`, note
-   `coherence Pass`, append the company to `~/workspace/jobs/strategy/skipped-companies.csv`
+   `coherence Pass`, append the company to `$JOBS_DIR/strategy/skipped-companies.csv`
    (see `strategy/auto-apply.md`), stop. `Price` → continue, but carry the why-line into
    `job-posting.md` "Notes" so the loop questions and the seat shape are visible from the first
    artifact. `Advance` and `Unknown` → continue. A company vetted in the last 90 days is not
@@ -256,7 +275,7 @@ Walk through the full pipeline for a new job posting end-to-end.
    `strategy/auto-apply.md` "Fit grade". This is Jack in the role; it does not use the vet's
    coherence verdict.
 5c2. **Work-life-balance filter.** Apply the "Hard filters" section of the private
-   `~/workspace/jobs/strategy/leadership-search.md` using the vet's work/life sub-rating and
+   `$JOBS_DIR/strategy/leadership-search.md` using the vet's work/life sub-rating and
    any stated hours expectation (founder statements, the posting). A **fail** there →
    `stage=withdrawn`, note `wlb: <evidence>`, stop and archive. A **flag** → continue, and put
    the hours question at the top of the brief's "Needs Jack". This is independent of the
@@ -334,11 +353,11 @@ Per-job tailoring lives in the **private jobs repo** under `applications/<id>/`,
 resume-repo branch. The `role/*` archetypes are read-only starting points.
 
 1. Find the closest `role/*` archetype without checking anything out:
-   `git -C ~/workspace/resume branch -r --list 'origin/role/*'` (or `git -C ~/workspace/resume show-ref --heads`).
+   `git -C $RESUME_DIR branch -r --list 'origin/role/*'` (or `git -C $RESUME_DIR show-ref --heads`).
    Pick the nearest; do not ask the user. If none fits, use `main`.
 1b. **Refresh the archetype if it is stale (lazy sync).** Archetypes drift behind
    `main` as the canonical résumé gains fixed facts and convention changes; a stale one
-   tailors from wrong facts. Check: `git -C ~/workspace/resume rev-list --count role/<name>..main`.
+   tailors from wrong facts. Check: `git -C $RESUME_DIR rev-list --count role/<name>..main`.
    - `0` → current, use as-is.
    - behind by a little → run `scripts/sync_archetypes.sh` (merges `main` into the archetypes,
      auto-publishes the clean ones, reports any that conflict). If it syncs `role/<name>` clean, use it.
@@ -351,30 +370,30 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
      a note that `role/<name>` needs a refresh, so the next use (or an attended pass) does it.
 2. Copy that archetype into the application folder as the tailoring base:
    ```bash
-   git -C ~/workspace/resume show role/<name>:resume.md \
-     > ~/workspace/jobs/applications/<id>/resume.md
+   git -C $RESUME_DIR show role/<name>:resume.md \
+     > $JOBS_DIR/applications/<id>/resume.md
    ```
    (Use `main:resume.md` if starting from the canonical résumé.)
-3. Read `~/workspace/jobs/strategy/narrative.md` and `~/workspace/jobs/strategy/facts.md` — respect all factual constraints and guardrails.
+3. Read `$JOBS_DIR/strategy/narrative.md` and `$JOBS_DIR/strategy/facts.md` — respect all factual constraints and guardrails.
 4. Read the saved job description, then tailor `applications/<id>/resume.md` in place: adjust Summary, reorder/emphasize bullets, update Skills, compress less-relevant experience. Keep ATS-friendly formatting (structural-only bolding, subject-elided register, gerund tense on current-role items, positive-positioning summary, no em/en dashes). Changed résumé bullets are external output: clear the **External Output Gate**.
 5. Render the PDF beside the markdown (self-contained script, no resume repo needed at runtime):
    ```bash
-   ~/workspace/agent-tools/skills/job-search/scripts/make_resume_pdf.sh \
-     ~/workspace/jobs/applications/<id>/resume.md \
-     "~/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"
+   <skill-dir>/scripts/make_resume_pdf.sh \
+     $JOBS_DIR/applications/<id>/resume.md \
+     "$JOBS_DIR/applications/<id>/Resume - <Name> - <Role>.pdf"
    ```
    The output file is always named `Resume - <Name> - <Role>.pdf` (e.g. `Resume - Jack Senechal -
    IT Director - AI.pdf`): the user wants the file name to read well for the recruiter who
    downloads it. Never a bare `resume.pdf`. `--name` is required (flag or `$JOB_SEARCH_APPLICANT_NAME`
    from `profile.md`); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
    print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
-6. `xdg-open "~/workspace/jobs/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
+6. `xdg-open "$JOBS_DIR/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
 6a. **If the application portal is Workday** (the "Autofill with Resume" step), the styled PDF
     mangles on upload. Render a plain, single-column `.docx` from the same markdown instead.
-    Standard invocation (values read from `~/workspace/jobs/profile.md`):
+    Standard invocation (values read from `$JOBS_DIR/profile.md`):
     ```bash
-    ~/workspace/agent-tools/skills/job-search/scripts/make_resume_workday.sh \
-      ~/workspace/jobs/applications/<id>/resume.md \
+    <skill-dir>/scripts/make_resume_workday.sh \
+      $JOBS_DIR/applications/<id>/resume.md \
       --name "Jack Senechal" \
       --phone "<cell from profile.md>" \
       --edu-start <year from profile.md> \
@@ -475,7 +494,7 @@ Homebound outline of 2026-09-18 (`homebound-tech-lead-manager/letter-outline.md`
 `applications/` or `applications/archived/`) is the reference example; the Nixon Peabody one
 is the over-specified counterexample.
 
-**Draft in Jack's voice from the first line** (`~/workspace/jobs/strategy/voice-profile.md`),
+**Draft in Jack's voice from the first line** (`$JOBS_DIR/strategy/voice-profile.md`),
 not in generic cover-letter register to be rescued at the slop pass. Read the profile before
 drafting, including its whole-letter example and the register it assigns to the artifact
 (cover letters: warm-professional). Its traits are a palette, not a checklist: use the ones
@@ -506,7 +525,7 @@ application answers, cover letters, outreach messages, and recruiter replies. Tw
 
 For any written questions or essays identified in Stage 3:
 
-1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, `applications/<id>/company-research.md`, the tailored `applications/<id>/resume.md`, `~/workspace/jobs/strategy/facts.md`, and `~/workspace/jobs/strategy/narrative.md`
+1. Read `applications/<id>/application-form.md`, `applications/<id>/job-posting.md`, `applications/<id>/glassdoor.md`, `applications/<id>/company-research.md`, the tailored `applications/<id>/resume.md`, `$JOBS_DIR/strategy/facts.md`, and `$JOBS_DIR/strategy/narrative.md`
 2. Draft responses: specific to the user's experience, tailored to role and company, concise, and honest per the guardrails in `facts.md`. Write them properly rather than assembling them from the fact sheet; look up particulars (numbers, titles, dates, scope) there instead of recalling them, and let the argument and the voice be your own.
 3. Run the gate on the draft:
    a. **Fact check** — spawn a `sonnet` subagent, read-only, per `references/external-output-gate.md`.
@@ -514,7 +533,7 @@ For any written questions or essays identified in Stage 3:
    b. **Reconcile** on the main thread. Apply every blocking fix yourself. Spot-check any
       quote the checker attributes to a source file; a checker that paraphrases is wrong.
    c. **Slop pass** — spawn a `sonnet` subagent running the `no-ai-slop` skill in Edit mode,
-      handing it `~/workspace/jobs/strategy/voice-profile.md` as the voice target (sound like
+      handing it `$JOBS_DIR/strategy/voice-profile.md` as the voice target (sound like
       *this*, not just "less AI"), with the instruction that it may cut and rephrase but must
       not add, sharpen, or quantify any claim.
    d. **Mechanical check** — `scripts/check_claims.sh <file>`. Must exit clean.
@@ -551,8 +570,8 @@ template script — do NOT hand-roll pandoc/Chrome styling each time:
 
 ```bash
 # Name is supplied at runtime (no PII in this repo — see AGENTS.md). Source it from the private
-# profile, e.g.: NAME=$(awk -F'|' '/Full name/{gsub(/ /,"",$3);print $3}' ~/workspace/jobs/profile.md)
-~/workspace/agent-tools/skills/job-search/scripts/make_cover_letter_pdf.sh \
+# profile, e.g.: NAME=$(awk -F'|' '/Full name/{gsub(/ /,"",$3);print $3}' $JOBS_DIR/profile.md)
+<skill-dir>/scripts/make_cover_letter_pdf.sh \
   applications/<id>/cover-letter.md \
   "applications/<id>/Cover Letter - <Your Name> - <Role>.pdf" \
   --name "<Your Name>" \
@@ -566,11 +585,11 @@ or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
 **Stage 5: Finalize & Push**
 
 1. Verify all artifacts exist in `applications/<id>/`: `job-posting.md`, `glassdoor.md`, `company-research.md`, `application-form.md`, `application-responses.md`, `resume.md`, `Resume - <Name> - <Role>.pdf` (plus `cover-letter.md` and its rendered PDF when a cover letter applies)
-2. Check `~/workspace/jobs/strategy/networking/people.md` for a warm contact at this company. If one exists, copy them into `referral_contact` and set `referral_status` from their roster status (`not_contacted`→`identified`, `reached_out`→`contacted`, `in_conversation`/`warm`→`replied`, `referred`→`referred`), and note it in `brief.md`. No per-application search: relationships are the networking track's job.
+2. Check `$JOBS_DIR/strategy/networking/people.md` for a warm contact at this company. If one exists, copy them into `referral_contact` and set `referral_status` from their roster status (`not_contacted`→`identified`, `reached_out`→`contacted`, `in_conversation`/`warm`→`replied`, `referred`→`referred`), and note it in `brief.md`. No per-application search: relationships are the networking track's job.
 3. Update tracker: `stage=ready_to_apply`
 4. Commit and push the job-search repo (per-job résumé and PDF are committed here now — nothing goes to the resume repo):
    ```bash
-   cd ~/workspace/jobs
+   cd $JOBS_DIR
    git add -A
    git commit -m "Add <company> <role> application package"
    git push
@@ -599,13 +618,13 @@ Lane-decision sync is no longer a `discover` step: headless runs have no `Artifa
 The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
 `artifact/README.md`, "Lane approval").
 
-1. Read `~/workspace/jobs/sources.json`. For each `enabled` source, spawn a subagent to scrape
+1. Read `$JOBS_DIR/sources.json`. For each `enabled` source, spawn a subagent to scrape
    the saved-jobs list via `mcp__playwright-golden__*` (`haiku` for Indeed, `sonnet` for
    LinkedIn per its safety protocol). Return the list verbatim with each job's site key.
 2. Diff against `tracker.csv` on `(source, key)` parsed from the `url` column. Never dedup on
    company + title: two distinct postings can share a title.
 3. **Skip-registry check.** Before researching a new find, look up its company in
-   `~/workspace/jobs/strategy/skipped-companies.csv`. If found and `revisit_after` is still in
+   `$JOBS_DIR/strategy/skipped-companies.csv`. If found and `revisit_after` is still in
    the future, log it (company, when it reopens) and do not add the row. If `revisit_after` has
    passed, or the company isn't listed, continue as normal — a reopened company gets vetted
    fresh, not reused from the old row.
@@ -625,7 +644,7 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
     action. This is the same rule the weekly `liveness` sweep uses.
 5c. **Watchlist poll.** Run `scripts/watch_companies.py` (no flags — a real run always updates
     the seen-state file; `--dry-run` is for manual trial only) against
-    `~/workspace/jobs/strategy/watchlist.csv`. It lists open jobs at every company with a
+    `$JOBS_DIR/strategy/watchlist.csv`. It lists open jobs at every company with a
     public Greenhouse/Ashby/Lever board, filters to Jack's role families and US-remote/Bay
     Area geography, and prints `NEW`, `MOVED <id>`, `REOPENED <id>`, and `PRIOR <stage> <id>`
     rows (never edits the tracker itself — see the script's docstring for the matching order).
@@ -663,11 +682,11 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
 
 Find open roles at high-coherence, high-ceiling companies by searching for the **companies
 first and the roles second**. Method and calibration live in the private repo:
-`~/workspace/jobs/strategy/coherence-instrument.md` ("Tier 1 inverted") and
+`$JOBS_DIR/strategy/coherence-instrument.md` ("Tier 1 inverted") and
 `references/coherence-pipeline.md` here. Default time box 10 minutes, ~25 tool calls, max 15
 hits. Runs as one `sonnet` subagent with `WebSearch`/`WebFetch`; no browser.
 
-1. Read the target role profile (`~/workspace/jobs/strategy/leadership-search.md`, "Target Role
+1. Read the target role profile (`$JOBS_DIR/strategy/leadership-search.md`, "Target Role
    Profile") and the **geographic filter** below.
 2. Build a candidate list of 10-15 companies from the five inversion signals: public handbook /
    RFC / postmortem archive; founder-led 7+ years, no PE event, revenue coupled to output;
@@ -697,7 +716,7 @@ columns. The verdict is the pipeline's action; what the user reads at a glance i
 **roll-up** (instrument, "Roll-up: level, trend, tags"): level from the cell, trend from the
 derivative, and `coh_tags` naming what produced the verdict (`pe`, `layoffs`, `ceiling 0.4`,
 `thin`, ...). Write the tags from the instrument's vocabulary only; an empty string is valid.
-The instrument is in the private repo, `~/workspace/jobs/strategy/coherence-instrument.md`
+The instrument is in the private repo, `$JOBS_DIR/strategy/coherence-instrument.md`
 (the "Tier 1: the fast filter" section); scored cases and calibration in `coherence-cases.md`.
 
 1. Spawn one `sonnet` subagent per company, in parallel, at most **12-15 per session** (the
@@ -710,12 +729,12 @@ The instrument is in the private repo, `~/workspace/jobs/strategy/coherence-inst
    flags, growth absorption, Blind gap, seed read for small companies) and writes the columns
    plus a one-line note. Verdicts: `Advance`, `Price`, `Pass`, `Unknown`.
 3. `Pass` rows at `discovered` through `applied`: set `stage=withdrawn` with the note
-   `coherence Pass`, and append a row to `~/workspace/jobs/strategy/skipped-companies.csv`
+   `coherence Pass`, and append a row to `$JOBS_DIR/strategy/skipped-companies.csv`
    (company, date, roll-up, reason, `revisit_after` = date + 6 months — see
    `strategy/auto-apply.md`). Rows at `interviewing` or `offer` keep their stage; write the
    verdict and note only, and flag it in the summary for the user. `Unknown` rows keep the
    seed read in the note. `Advance` rows are the candidates for `add`.
-4. Append the report to `~/workspace/jobs/strategy/coherence-cases.md` under a dated heading,
+4. Append the report to `$JOBS_DIR/strategy/coherence-cases.md` under a dated heading,
    and commit.
 
 ### `pipeline` — Scout, vet, and prep Advance rows end to end
@@ -726,7 +745,7 @@ verdict is `Advance` and whose posting is live. Stops before any submission, as 
 
 ### `northbay` — Weekly North Bay re-scout (orchestrator)
 
-Runs `~/workspace/jobs/strategy/north-bay-rescout.md` end to end. Installed as
+Runs `$JOBS_DIR/strategy/north-bay-rescout.md` end to end. Installed as
 `job-search-northbay.timer` (Tuesdays 09:00). Manual run:
 `scripts/orchestrator.sh northbay [--force] [--dry-run]`. The runbook itself lives in the
 private repo, so changes to what this mode does go there, not here.
@@ -794,7 +813,7 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 
 ### `apply` — Auto-apply run (not yet on a timer)
 
-Fills, and — once `~/workspace/jobs/auto-apply.json` says `"mode": "live"` — submits
+Fills, and — once `$JOBS_DIR/auto-apply.json` says `"mode": "live"` — submits
 applications for rows Jack has approved into the `auto` lane (`strategy/auto-apply.md`). Full
 procedure: `references/auto-apply-runbook.md`. Short version: lane decisions arrive already
 synced into `tracker.csv` by the steward (headless `apply` has no `ArtifactData` tool), pick up
@@ -810,8 +829,8 @@ retrying past it, then branch on mode — shadow stops before Submit, live click
 
 ### `watch setup` — Install the orchestrator timers
 
-1. Create `~/workspace/jobs/sources.json` if absent (template in `references/orchestrator-loop.md`).
-2. Run `~/workspace/agent-tools/skills/job-search/scripts/install-orchestrator.sh`, which
+1. Create `$JOBS_DIR/sources.json` if absent (template in `references/orchestrator-loop.md`).
+2. Run `<skill-dir>/scripts/install-orchestrator.sh`, which
    installs and enables the systemd user timers. `--uninstall` reverses it.
 3. Verify with `systemctl --user list-timers 'job-search-*'`. Expect `job-search-discover`
    (06:00), `job-search-liveness` (Sun 10:00), `job-search-northbay` (Tue 09:00), and
@@ -827,10 +846,10 @@ retrying past it, then branch on mode — shadow stops before Submit, live click
 Read `references/knowledge-graph.md` for full setup, ingestion, and query guidance.
 
 - `kg setup` — Start ArcadeDB and run first ingestion
-- `kg ingest` — Re-ingest after a new LinkedIn export: `python3 ~/workspace/agent-tools/skills/job-search/scripts/ingest_linkedin.py --me-name "Your Name"`
-- `kg query <company>` — Query warmth scores: `python3 ~/workspace/agent-tools/skills/job-search/scripts/query_connections.py "<Company>"`
-- `kg status` — Check container/heartbeat/idle-timer state: `~/workspace/agent-tools/skills/job-search/scripts/arcadedb_ctl.sh status`
-- `kg stop` — Stop ArcadeDB now: `~/workspace/agent-tools/skills/job-search/scripts/arcadedb_ctl.sh stop`
+- `kg ingest` — Re-ingest after a new LinkedIn export: `python3 <skill-dir>/scripts/ingest_linkedin.py --me-name "Your Name"`
+- `kg query <company>` — Query warmth scores: `python3 <skill-dir>/scripts/query_connections.py "<Company>"`
+- `kg status` — Check container/heartbeat/idle-timer state: `<skill-dir>/scripts/arcadedb_ctl.sh status`
+- `kg stop` — Stop ArcadeDB now: `<skill-dir>/scripts/arcadedb_ctl.sh stop`
 
 The `ingest`/`query` scripts start the container on demand and refresh an idle
 heartbeat, so do NOT run `docker compose up` by hand. An idle-reaper systemd timer
@@ -891,7 +910,7 @@ brought current the next time its role is tailored, Stage 2 step 1b); this comma
 on-demand hygiene pass that does the mechanical merges in one shot.
 
 ```bash
-~/workspace/agent-tools/skills/job-search/scripts/sync_archetypes.sh [--dry-run] [--no-push]
+<skill-dir>/scripts/sync_archetypes.sh [--dry-run] [--no-push]
 ```
 
 For each `role/*` branch it merges `main` in. Generated artifacts (`index.html`,
@@ -908,8 +927,8 @@ archetype:
 
 `--dry-run` reports what each archetype would do (behind-count + predicted clean/conflict)
 and changes nothing. `--no-push` commits locally without pushing. Requires a clean resume
-working tree; it restores the starting branch on exit. Env: `RESUME_REPO_PATH`
-(default `~/workspace/resume`).
+working tree; it restores the starting branch on exit. It works on `$RESUME_DIR`
+(see Project Locations).
 
 Note: heavily-diverged archetypes (e.g. months behind, independently rewritten) will all
 report as conflicts — that is expected, and the fix is a refresh, not a forced merge.
@@ -917,8 +936,8 @@ report as conflicts — that is expected, and the fix is a refresh, not a forced
 ### `sync` — Pull both repos to current device
 
 ```bash
-cd ~/workspace/jobs && git pull --rebase
-cd ~/workspace/resume && git fetch --all --prune && git pull --rebase
+cd $JOBS_DIR && git pull --rebase
+cd $RESUME_DIR && git fetch --all --prune && git pull --rebase
 ```
 
 Print tracker state after sync.
@@ -927,7 +946,13 @@ Print tracker state after sync.
 
 Create a fresh job search directory from scratch.
 
-1. `mkdir -p ~/workspace/jobs && cd ~/workspace/jobs && git init`
+1. Ask the user where the repo should live, then create it and record the location so the
+   scripts can find it from anywhere (they also find it from inside the repo without this):
+   ```bash
+   mkdir -p <path> && cd <path> && git init
+   mkdir -p ~/.config/job-search
+   echo "JOBS_DIR=$PWD" >> ~/.config/job-search/paths.env   # plus RESUME_DIR=/SITE_DIR= if not siblings
+   ```
 2. Create tracker with headers:
    ```bash
    echo "id,company,role,url,stage,resume_branch,role_branch,application_url,referral_contact,referral_status,date_found,date_applied,date_updated,notes,coh_cell,coh_derivative,coh_verdict,coh_date,track,coh_tags" > tracker.csv
@@ -938,11 +963,11 @@ Create a fresh job search directory from scratch.
    # Job Search Pipeline
 
    ## Key Paths
-   - **Tracker**: `~/workspace/jobs/tracker.csv`
-   - **Resume repo**: `~/workspace/resume/` (public; `main` + `role/*` archetypes only, read-only)
-   - **Per-job résumé**: `~/workspace/jobs/applications/<id>/resume.md` + `Resume - <Name> - <Role>.pdf`
-   - **Job research**: `~/workspace/jobs/applications/<id>/`
-   - **Archived job research**: `~/workspace/jobs/applications/archived/<id>/`
+   - **Tracker**: `$JOBS_DIR/tracker.csv`
+   - **Resume repo**: `$RESUME_DIR/` (public; `main` + `role/*` archetypes only, read-only)
+   - **Per-job résumé**: `$JOBS_DIR/applications/<id>/resume.md` + `Resume - <Name> - <Role>.pdf`
+   - **Job research**: `$JOBS_DIR/applications/<id>/`
+   - **Archived job research**: `$JOBS_DIR/applications/archived/<id>/`
 
    ## LinkedIn Safety — CRITICAL
    See the `job-search` skill's `references/linkedin-safety.md` for full protocol.
@@ -950,8 +975,8 @@ Create a fresh job search directory from scratch.
    ## Knowledge Graph (ArcadeDB)
    - **Data**: `data/linkedin/` (Connections.csv, Messages.csv, Positions.csv, Education.csv)
    - **Setup & scripts**: Run `/job-search kg setup`
-   - **Query**: `python3 ~/workspace/agent-tools/skills/job-search/scripts/query_connections.py "<Company>"`
-   - **Ingest**: `python3 ~/workspace/agent-tools/skills/job-search/scripts/ingest_linkedin.py --me-name "Your Name"`
+   - **Query**: `python3 <skill-dir>/scripts/query_connections.py "<Company>"`
+   - **Ingest**: `python3 <skill-dir>/scripts/ingest_linkedin.py --me-name "Your Name"`
    ```
 5. Create `profile.md` with the template in the `setup` sub-command below
 6. Initial commit: `git add -A && git commit -m "Initialize job search pipeline"`
@@ -961,7 +986,7 @@ Create a fresh job search directory from scratch.
    ```
 8. Print next steps:
    ```
-   Job search repo initialized at ~/workspace/jobs
+   Job search repo initialized at $JOBS_DIR
 
    Next steps:
    1. /job-search setup     — configure browser automation
@@ -974,7 +999,7 @@ Create a fresh job search directory from scratch.
 1. Run `/playwright-docker setup` to configure Dockerized Playwright (recommended). If the
    user cannot or does not want Docker, fall back to browsermcp — see `references/browser-setup.md`.
 2. Verify by calling `browser_navigate` to `https://google.com` and confirming `browser_snapshot` returns content.
-3. Create `~/workspace/jobs/profile.md` if it doesn't exist:
+3. Create `$JOBS_DIR/profile.md` if it doesn't exist:
    ```markdown
    # Application Profile
 
@@ -1087,7 +1112,7 @@ with open('tracker.csv','w',newline='') as f:
 
 ## Application Form Defaults
 
-Personal details for pre-filling application forms live at `~/workspace/jobs/profile.md`.
+Personal details for pre-filling application forms live at `$JOBS_DIR/profile.md`.
 Read that file before filling any form. **NEVER put personal details anywhere in this public
 skill — not SKILL.md, not scripts, not assets** (see the repo `AGENTS.md`). Pass them in at
 runtime (flags / env / read from the private profile) instead.
@@ -1142,7 +1167,7 @@ runtime (flags / env / read from the private profile) instead.
     `strategy/leadership-search.md` "Hard filters". Every vet reports the work/life sub-rating
     (with n) and any stated hours expectation so it can run.
 15. **No PII anywhere in this public skill** (SKILL.md, scripts, assets — the whole repo). All
-    personal details live in the private job-search repo (`~/workspace/jobs/`, incl. `profile.md`)
+    personal details live in the private job-search repo (`$JOBS_DIR/`, incl. `profile.md`)
     and are passed to scripts at runtime via flags or env vars. See the repo `AGENTS.md`.
 16. **Maintain the tracker artifact.** The private repo publishes a sortable/filterable view of
     `tracker.csv` as a Claude artifact (a primary interface surface for the user). The page also

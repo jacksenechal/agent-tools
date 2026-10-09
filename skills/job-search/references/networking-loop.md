@@ -1,6 +1,6 @@
 # Networking Loop (`network` mode)
 
-The weekly coach + researcher + strategist run behind `~/workspace/jobs/strategy/networking/`.
+The weekly coach + researcher + strategist run behind `$JOBS_DIR/strategy/networking/`.
 Read that directory's `README.md` first: it is the framework this protocol implements. This
 file is the how, the README is the why.
 

@@ -1,12 +1,12 @@
 [Unit]
 Description=Job search pipeline: weekly liveness check + saved-list sync
 
-# JOBS_DIR defaults to $HOME/workspace/jobs; override with an Environment= line here if needed,
-# e.g. Environment=JOBS_DIR=%h/workspace/jobs-alt
+# Template: install-orchestrator.sh fills in @SKILL_DIR@. The jobs repo is found through
+# ~/.config/job-search/paths.env (see scripts/paths.sh), which the installer writes.
 
 [Service]
 Type=oneshot
-ExecStart=%h/workspace/agent-tools/skills/job-search/scripts/orchestrator.sh liveness
+ExecStart=@SKILL_DIR@/scripts/orchestrator.sh liveness
 # Type=oneshot inherits DefaultTimeoutStartSec (commonly 90s), which would kill a run
 # mid-research. Allow up to 2h; the lockfile prevents overlap if one truly hangs.
 TimeoutStartSec=7200

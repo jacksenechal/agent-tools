@@ -68,7 +68,7 @@ Spawn a `sonnet` agent with the `no-ai-slop` skill, Edit mode. Hand it:
 
 - the draft verbatim,
 - audience and format ("a hiring manager at <company>, one-page cover letter PDF"),
-- **`~/workspace/jobs/strategy/voice-profile.md` as the voice target.** This is the positive
+- **`$JOBS_DIR/strategy/voice-profile.md` as the voice target.** This is the positive
   reference: not just "remove AI patterns" but "sound like *this*". The slop skill preserves
   the writer's voice; the profile makes that concrete. Tell it to match the register the
   profile assigns to this artifact (cover letters: warm-professional with a touch of
@@ -91,12 +91,12 @@ own guesses into the text.
 
 | Tier | Source | Authority |
 |---|---|---|
-| 1 | `~/workspace/resume/resume.md` on `main` | Employment history, titles, dates. Wins all conflicts. |
-| 1 | `~/workspace/jobs/strategy/facts.md` | Canonical atomic facts and negative guardrails. |
-| 1 | `~/workspace/jobs/strategy/narrative.md` | Project stories, values, framing constraints. |
-| voice | `~/workspace/jobs/strategy/voice-profile.md` | How Jack writes. The slop pass targets this; the fact check ignores it (voice is not a fact). |
-| 2 | `~/workspace/jacksenechal.com/` | Jack's public site. Public, so citable, and claims must not contradict it. |
-| 2 | `~/workspace/jobs/profile.md` | Logistics: location, work authorization, links. |
+| 1 | `$RESUME_DIR/resume.md` on `main` | Employment history, titles, dates. Wins all conflicts. |
+| 1 | `$JOBS_DIR/strategy/facts.md` | Canonical atomic facts and negative guardrails. |
+| 1 | `$JOBS_DIR/strategy/narrative.md` | Project stories, values, framing constraints. |
+| voice | `$JOBS_DIR/strategy/voice-profile.md` | How Jack writes. The slop pass targets this; the fact check ignores it (voice is not a fact). |
+| 2 | `$SITE_DIR/` | Jack's public site. Public, so citable, and claims must not contradict it. |
+| 2 | `$JOBS_DIR/profile.md` | Logistics: location, work authorization, links. |
 | 3 | `applications/<id>/*.md` for this job | Claims about the *company*. Only counts if it carries a `SOURCES:` URL. |
 
 Anything not in the corpus is unverified. Absence is not permission.
