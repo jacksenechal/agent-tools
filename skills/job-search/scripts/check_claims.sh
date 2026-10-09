@@ -33,8 +33,8 @@ collect_all() {
 }
 
 # Captured or audit content: scraped postings/research about a company, and per-application
-# fact-check logs that quote the wrong claims they caught. Not Jack's outgoing claims, so guards
-# about Jack do not apply. Skipped entirely.
+# fact-check logs that quote the wrong claims they caught. Not the user's outgoing claims, so guards
+# about the user do not apply. Skipped entirely.
 is_source_capture() {
   case "$1" in
     *job-posting.md|*glassdoor.md|*-research.md|*application-form.md|*fact-check.md) return 0 ;;
@@ -95,7 +95,7 @@ for f in "${FILES[@]}"; do
     done < <(grep -nEi -- "$pattern" "$f" 2>/dev/null)
   done < <(grep -v '^[[:space:]]*#' "$GUARDS" | grep -v '^[[:space:]]*$')
 
-  # Dashes: the draft itself only, not notes about a draft. Jack's hard rule.
+  # Dashes: the draft itself only, not notes about a draft. The user's hard rule.
   # Headings, list/field labels, attributions, and numeric ranges are exempt.
   if is_external "$f"; then
     while IFS=: read -r lineno text; do

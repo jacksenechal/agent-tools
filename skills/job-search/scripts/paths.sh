@@ -56,3 +56,19 @@ jobsearch_require_resume_dir() {
     return 2
   fi
 }
+
+# Reads one value from the user's profile ($JOBS_DIR/profile.md): the Value cell of the
+# `| <field> | <value> |` table row whose Field matches (case-insensitive). Prints nothing if
+# the profile or the row is missing. Personal values come from here, never from the skill.
+#   name="$(jobsearch_profile_field "Full name")"
+jobsearch_profile_field() {
+  local profile="$JOBS_DIR/profile.md"
+  [[ -n "$JOBS_DIR" && -f "$profile" ]] || return 0
+  awk -F'|' -v want="$1" '
+    NF >= 4 {
+      key = $2; gsub(/^[ \t]+|[ \t]+$/, "", key)
+      if (tolower(key) == tolower(want)) {
+        val = $3; gsub(/^[ \t]+|[ \t]+$/, "", val); print val; exit
+      }
+    }' "$profile"
+}

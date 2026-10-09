@@ -10,8 +10,8 @@
 #       [--edu-start YEAR] [--link URL]...
 #
 # This script is general-purpose and contains NO personal details. The applicant name must
-# be supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var
-# (source it from your private profile, e.g. profile.md in your jobs repo). The script errors
+# be supplied by the caller, via --name, $JOB_SEARCH_APPLICANT_NAME, or the "Full name" row of the
+# user's profile.md in the jobs repo (read automatically). The script errors
 # if no name is given. --phone, --edu-start, and --link work the same way: values come from the
 # caller (profile.md), never hardcoded here.
 #
@@ -20,7 +20,7 @@
 #                  read off a sibling "Resume - <Name> - <Role>.pdf" in the input's directory
 #                  (the file make_resume_pdf.sh already produced there). If no such PDF
 #                  exists, <Role> cannot be derived and an explicit output path is required.
-#   --name       -> $JOB_SEARCH_APPLICANT_NAME (required if the flag is omitted)
+#   --name       -> $JOB_SEARCH_APPLICANT_NAME, then profile.md "Full name"
 #   --keep-md    -> also write the intermediate cleaned markdown as "<output base>.workday.md"
 #                   beside the docx (off by default).
 #   --skills-style flat|categorized
@@ -57,7 +57,7 @@
 # an Independent/Consultant title, and drops non-job sections (Open Source Projects,
 # Recommendations, any Experience entry with no parseable Company/Dates line) — all learned from
 # a live Workday "Autofill with Resume" test; see that script's module docstring for the full
-# rule set and the Kantata multi-role caveat. Any source line it couldn't fully normalize (e.g.
+# rule set and the multi-role-entry caveat. Any source line it couldn't fully normalize (e.g.
 # a year-only date range with no month to expand) is reported to stderr as a NOTE — read those
 # before trusting the output blindly.
 #
@@ -113,8 +113,12 @@ if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
 fi
 
 if [[ -z "$NAME" ]]; then
-  echo "Error: applicant name required. Pass --name \"...\" or set \$JOB_SEARCH_APPLICANT_NAME" >&2
-  echo "       (source it from your private profile, e.g. profile.md in your jobs repo)." >&2
+  source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+  NAME="$(jobsearch_profile_field "Full name")"
+fi
+if [[ -z "$NAME" ]]; then
+  echo "Error: applicant name required. Pass --name \"...\", set \$JOB_SEARCH_APPLICANT_NAME," >&2
+  echo "       or add a \"| Full name | ... |\" row to profile.md in your jobs repo." >&2
   exit 1
 fi
 

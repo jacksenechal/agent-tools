@@ -6,13 +6,13 @@ file is the how, the README is the why.
 
 Invoked by `job-search-network.timer` (Mondays ~08:00) through `orchestrator.sh network`, or
 by hand as `/job-search network` in a session. The same three passes run either way; in a
-session, pass 1 may also ask Jack directly instead of relying only on `inbox.md`.
+session, pass 1 may also ask the user directly instead of relying only on `inbox.md`.
 
 ## Hard limits
 
-- **Never send anything.** Drafts go into the person's thread file marked `DRAFT`. Jack sends.
+- **Never send anything.** Drafts go into the person's thread file marked `DRAFT`. The user sends.
 - **No LinkedIn.** This mode does not open the golden browser. Research is the knowledge
-  graph (`scripts/query_connections.py`), the web, the tracker, and Jack's notes.
+  graph (`scripts/query_connections.py`), the web, the tracker, and the user's notes.
 - **Any drafted message is external output** and passes the External Output Gate
   (`references/external-output-gate.md`) before it is labeled sendable.
 - **At most two touches in `this-week.md`.** If the deep-think pass wants a third, it goes in
@@ -24,7 +24,7 @@ session, pass 1 may also ask Jack directly instead of relying only on `inbox.md`
 
 1. Read `strategy/networking/inbox.md`. For each note: identify the person or org, update
    their status and `last touch` in `people.md` (and the thread file if one exists, creating
-   one on the first real exchange), record what Jack said about how it went. Then empty the
+   one on the first real exchange), record what the user said about how it went. Then empty the
    inbox back to its header. A note that names nobody goes to the journal as context.
 2. Read `this-week.md` from last run. Mark each touch done / not done / partial from the
    inbox evidence. Not done is data, not a failure: carry it or drop it in pass 3.
@@ -45,7 +45,7 @@ a compact packet, not the whole repo: `networking/README.md`, `people.md`, the o
 changed this week, the last four `journal.md` entries, this run's pass-1 summary, and the
 memory `user-networking-hangup-wants-clear-direction`. Ask it to:
 
-- name the pattern in the last month (what moved, what stalled, what Jack found easy or hard);
+- name the pattern in the last month (what moved, what stalled, what the user found easy or hard);
 - propose up to three insights, each a non-obvious angle: a person two hops away, a public
   artifact that would earn a conversation, a room, a reframing of an org, a strategy that has
   gone stale and should be dropped;
@@ -59,7 +59,7 @@ a legitimate output when the evidence says so.
 ## Pass 3: direction
 
 1. Write `this-week.md` from scratch (template below). Two touches maximum, ordered, each
-   doable in twenty minutes, each with its one-line reason. If Jack reported the last week
+   doable in twenty minutes, each with its one-line reason. If the user reported the last week
    felt hard, the first touch must be smaller than last week's.
 2. Append a dated entry at the top of `journal.md`: what was folded in, what was researched,
    the insight kept (and the ones set aside, one line each), the decision. Under 15 lines.
@@ -67,7 +67,7 @@ a legitimate output when the evidence says so.
    headless and has no Artifact tool, so it cannot rebuild or publish the tracker page itself;
    if any tracker column changed, the steward session picks that up and rebuilds/republishes
    on its sync-publish cron.
-4. Notify Jack (`notify-send` on the machine; the brief itself is the message).
+4. Notify the user (`notify-send` on the machine; the brief itself is the message).
 
 ### `this-week.md` template
 
@@ -90,7 +90,7 @@ To research next run: <optional, short>
 
 ## Interactive use
 
-When Jack runs `/job-search network` himself, pass 1 starts by asking him what happened this
+When the user runs `/job-search network` themselves, pass 1 starts by asking them what happened this
 week (one question, open), then proceeds. Pass 2 still runs as a subagent so the deep think
 is not skipped when the session feels conversational. Pass 3 ends with the brief in the
 conversation as well as in the file.

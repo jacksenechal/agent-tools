@@ -1,11 +1,11 @@
 # Auto-Apply Runbook
 
-Fills and (once live) submits applications for rows Jack has approved into the `auto` lane.
+Fills and (once live) submits applications for rows the user has approved into the `auto` lane.
 Framework and lane rules: the private repo's `strategy/auto-apply.md`. This is the mechanical
 procedure the `apply` mode runs.
 
 **Mode switch**: `$JOBS_DIR/auto-apply.json` — `{"mode": "shadow"|"live"|"paused",
-"daily_cap": N, "max_live_per_company": N}`. Only Jack edits this file. Read it once at the
+"daily_cap": N, "max_live_per_company": N}`. Only the user edits this file. Read it once at the
 start of the run and again before every Submit click (step h) — never cache the mode across a
 long run.
 
@@ -31,7 +31,7 @@ Take up to `daily_cap` of them, oldest `date_updated` first.
 
 **`max_live_per_company`**: count rows at the same company already submitted and still open
 (stage `applied` or `interviewing`); unsubmitted rows don't count. (The tracker page's "also
-live" list is wider on purpose: it's context for Jack, not the cap.) Skip a candidate that
+live" list is wider on purpose: it's context for the user, not the cap.) Skip a candidate that
 would push the company over the cap; note on the row `auto-apply: skipped, at
 max_live_per_company (<n> already live)` and move to the next candidate. Never silently drop it.
 
@@ -39,14 +39,14 @@ max_live_per_company (<n> already live)` and move to the next candidate. Never s
 
 1. Tailored résumé PDF: Resume Workflow in jobs `CLAUDE.md` / SKILL.md Stage 2. If the row is
    already at `resume_tailored` or later this normally exists — verify the named file
-   (`Resume - Jack Senechal - <Role>.pdf`) is actually on disk, not just that the stage says so.
+   (`Resume - <Your Name> - <Role>.pdf`) is actually on disk, not just that the stage says so.
 2. Cover letter: only when `application-form.md` (or the live form, if that doc is stale — see
    (d)) shows a slot. Run it through the full External Output Gate (fact check → reconcile →
    `no-ai-slop` → `check_claims.sh`) before it touches the form. Same gate for any free-text
    "why us" / "how did you hear about us" answer.
 3. **"Why us" / motivation answers need a real motivation or connection on record** — from
-   `brief.md`, `company-research.md`, or something Jack has said. Never invent one. If none
-   exists, don't write the field: hand the row to Jack (step f) with the note
+   `brief.md`, `company-research.md`, or something the user has said. Never invent one. If none
+   exists, don't write the field: hand the row to the user (step f) with the note
    `auto-apply: needs a real "why us" answer, none on record`.
 
 ## (d) Resolve the live posting and fill the form
@@ -66,16 +66,16 @@ Hightouch's own site. Before filling:
    use the Ashby posting API if reachable, otherwise read the live form's accessibility tree —
    don't assume the API plan from a different ATS applies. Lever: read the form directly, no
    known read API in this pipeline yet.
-3. **Workday is out of scope for this mode.** Hand it to Jack (step f) the moment Workday is
+3. **Workday is out of scope for this mode.** Hand it to the user (step f) the moment Workday is
    detected (the "Autofill with Resume" step, or a `myworkday.com` domain) — don't attempt a
-   fill. (`references/workday-playbook.md` covers Jack's own manual flow there.)
+   fill. (`references/workday-playbook.md` covers the user's own manual flow there.)
 4. **Never use LinkedIn Easy Apply.** If the only application path is LinkedIn Easy Apply, hand
-   the row to Jack.
+   the row to the user.
 5. Fill the form in the **golden** browser (`mcp__playwright-golden__*`), one row at a time —
    never two browser agents concurrently (feedback: serialize golden-browser agents). Use
    `profile.md` for every standing field (contact, work authorization, EEO, salary policy,
-   name policy — the cell number, not the Google Voice one; "Jack Senechal" everywhere except an
-   explicit legal-name field, which gets "John Senechal" with the preferred-name box ticked).
+   name policy — the cell number, not the Google Voice one; the preferred name everywhere except an
+   explicit legal-name field, which gets the legal name with the preferred-name box ticked).
 
 ## (e) Screenshot and record
 
@@ -86,7 +86,7 @@ Hightouch's own site. Before filling:
   or a locator's `.screenshot({path})` writes directly there — no `docker cp` needed (unlike the
   spike, which predated the identical-path mount fix).
 - After each file upload, **verify the filename in the snapshot**: the accessibility tree should
-  show `Resume - Jack Senechal - <Role>.pdf` (or the cover letter's equivalent), not a bare
+  show `Resume - <Your Name> - <Role>.pdf` (or the cover letter's equivalent), not a bare
   `resume.pdf` or a browser-generated temp name. An upload that lost its proper name is a stop
   condition (step f).
 - Write `applications/<id>/submission/submission.md`: every field, the value given, and its
@@ -94,7 +94,7 @@ Hightouch's own site. Before filling:
   shape as the Hightouch spike's file. Start it with a `**SHADOW MODE**` or `**LIVE**` line per
   (h).
 
-## (f) Stop conditions — hand the row to Jack
+## (f) Stop conditions — hand the row to the user
 
 Any of these: stop the fill, don't touch Submit, hand the row over.
 
@@ -108,7 +108,7 @@ Any of these: stop the fill, don't touch Submit, hand the row over.
 
 **To hand over**: set `lane=personal` on the row and add a dated note explaining which
 condition fired and what's missing. Leave whatever partial `submission/` material was produced
-(screenshots, draft `submission.md`) — it saves Jack the re-discovery.
+(screenshots, draft `submission.md`) — it saves the user the re-discovery.
 
 ## (g) CAPTCHA / bot check
 
@@ -118,7 +118,7 @@ clear it in noVNC (http://localhost:6080/vnc.html)"` — don't wait to finish th
 If PushNotification isn't available in this run (headless runs may lack it), also run
 `notify-send -u critical "job-search apply" "<same message>"` so a desktop alert still fires.
 Then poll the page every ~2 minutes for about 10 minutes (a handful of snapshots, not a tight
-loop) waiting for Jack to clear it. If it clears, continue the fill from where it stopped. If it
+loop) waiting for the user to clear it. If it clears, continue the fill from where it stopped. If it
 doesn't clear within the window, park the row: note `auto-apply: CAPTCHA not cleared, parked
 <timestamp>`, leave lane as `auto` (it's still approved, just blocked) so the next run retries
 it, and move to the next candidate.
@@ -127,7 +127,7 @@ it, and move to the next candidate.
 
 Read `auto-apply.json` again right before this step — it may have changed mid-run.
 
-- **shadow**: stop before clicking Submit. Add the note `shadow fill complete, awaiting Jack`
+- **shadow**: stop before clicking Submit. Add the note `shadow fill complete, awaiting user`
   to the row. `submission.md` opens with `**SHADOW MODE: not submitted.**`
 - **live**: click Submit, screenshot the confirmation page into `submission/`, set
   `stage=applied` and `date_applied=today`, note `auto-submitted`. `submission.md` opens with
@@ -175,5 +175,5 @@ use).
 
 ## Summary
 
-One screen: rows attempted, outcome per row (shadow-filled / submitted / handed to Jack with
+One screen: rows attempted, outcome per row (shadow-filled / submitted / handed to the user with
 reason / parked on CAPTCHA / skipped on company cap), and the mode the run operated under.

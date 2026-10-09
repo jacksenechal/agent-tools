@@ -59,3 +59,21 @@ def resume_dir():
         if sibling and os.path.isdir(os.path.join(sibling, ".git")):
             d = sibling
     return d
+
+
+def profile_field(field):
+    """One value from the user's profile (<jobs repo>/profile.md): the Value cell of the
+    `| <field> | <value> |` table row whose Field matches, case-insensitively. None if the
+    profile or the row is missing. Personal values come from here, never from the skill."""
+    jd = jobs_dir(required=False)
+    if not jd:
+        return None
+    try:
+        with open(os.path.join(jd, "profile.md"), encoding="utf-8") as f:
+            for line in f:
+                cells = [c.strip() for c in line.strip().strip("|").split("|")]
+                if len(cells) >= 2 and cells[0].lower() == field.lower():
+                    return cells[1] or None
+    except OSError:
+        pass
+    return None

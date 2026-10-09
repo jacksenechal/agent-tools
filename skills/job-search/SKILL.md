@@ -42,7 +42,7 @@ The orchestrator runs on timers rather than on request:
 |---|---|---|
 | `discover` | daily 06:00 (+15m jitter) | scan saved-job lists, auto-add, research |
 | `liveness` | Sundays 10:00 | are pre-application postings still open, sync saved lists |
-| `northbay` | Tuesdays 09:00 | run `strategy/north-bay-rescout.md` end to end |
+| `runbook <path>` | the user's own timers | run a runbook from the jobs repo end to end (see below) |
 | `network` | Mondays 08:00 | weekly networking loop: fold in progress, deep think, write `this-week.md` |
 | `apply` | manual only, no timer yet | auto-apply run: fill (shadow) or submit (live) approved rows, per `auto-apply.json` |
 
@@ -68,6 +68,21 @@ The scripts resolve these themselves through `scripts/paths.sh` (bash) and
 the jobs repo. When you need a value for a command of your own, get it the same way:
 `source <skill-dir>/scripts/paths.sh && echo "$JOBS_DIR $RESUME_DIR $SITE_DIR"`.
 
+**This skill is user-agnostic; the jobs repo is the user.** Everything unique to one person
+(name, contact details, history, facts, voice, preferences, form answers, org names) lives in
+their jobs repo: `profile.md` for form-level values, `strategy/` for the rest. Scripts read it
+from there at run time, so the skill can be shared as is. Never write a personal value into this
+skill, even as a default or an example; use a placeholder and, if a script needs the value, a
+`profile.md` field. Fields the scripts read today (rows of the `| Field | Value |` table, via
+`jobsearch_profile_field` in `paths.sh` / `profile_field` in `jobsearch_paths.py`):
+
+| `profile.md` field | Used by |
+|---|---|
+| `Full name` | `make_resume_pdf.sh`, `make_cover_letter_pdf.sh`, `make_resume_workday.sh` (when `--name` is not given) |
+| `Consulting company` | `resume_to_workday_md.py`: org name for an Independent/Consultant entry on the Workday docx |
+| `Workday school names` | `resume_to_workday_md.py`: `Source name => Workday name` pairs (`;`-separated) for schools Workday's lookup misses |
+| `Local areas` | `watch_companies.py`: comma-separated places that count as commutable, besides US-remote; unset means remote-only |
+
 **Do not reintroduce hard-coded paths** (a fixed workspace directory under the home folder, a
 specific user's home directory, or any other assumed layout) anywhere in this skill: not in
 docs, scripts, assets, examples, or comments. Use the names above, and add new locations to
@@ -88,7 +103,7 @@ docs, scripts, assets, examples, or comments. Use the names above, and add new l
 - **Canonical facts**: `$JOBS_DIR/strategy/facts.md` — atomic, sourced claims plus the
   "do NOT claim" guardrails. The reference for verifiable particulars, not a menu to draft from.
 - **Project narratives and framing constraints**: `$JOBS_DIR/strategy/narrative.md`
-- **Voice profile**: `$JOBS_DIR/strategy/voice-profile.md` — how Jack actually writes.
+- **Voice profile**: `$JOBS_DIR/strategy/voice-profile.md` — how the user actually writes.
   Draft externally-facing text from this; the slop pass checks against it. Governs *how it
   sounds*, as facts.md governs *what is true*.
 - **Banned claim strings**: `$JOBS_DIR/strategy/claim-guards.txt`
@@ -206,11 +221,11 @@ at `add` time, written to the tracker's `track` column, and the user can change 
 
 **Fast**: close to a known archetype, routine judgment calls. Runs unattended to
 `ready_to_apply`. **Deep**: the user's judgment is the actual product, so the pipeline prepares
-his thinking rather than substituting for it, and stops early enough that his direction still
+their thinking rather than substituting for it, and stops early enough that their direction still
 shapes the work. The difference is *who decides*, not how much research happens.
 
 When it is genuinely ambiguous, take fast. A fast application the user decides to invest in at
-review is cheap; a deep one he did not need cost hours before he ever saw it.
+review is cheap; a deep one they did not need cost hours before they ever saw it.
 
 Routing rules, the per-stage table, and the `brief.md` spec: `references/application-tracks.md`.
 
@@ -272,13 +287,13 @@ Walk through the full pipeline for a new job posting end-to-end.
    the row goes to tier 2 before a letter is spent (instrument, "The read").
 5c1. **Fit grade.** Set `fit` on the row: `<grade>: <reason>` where grade is `strong` / `solid`
    / `stretch` and reason is ~12 words naming what decided it. Rubric and anchors:
-   `strategy/auto-apply.md` "Fit grade". This is Jack in the role; it does not use the vet's
+   `strategy/auto-apply.md` "Fit grade". This is the user in the role; it does not use the vet's
    coherence verdict.
 5c2. **Work-life-balance filter.** Apply the "Hard filters" section of the private
    `$JOBS_DIR/strategy/leadership-search.md` using the vet's work/life sub-rating and
    any stated hours expectation (founder statements, the posting). A **fail** there →
    `stage=withdrawn`, note `wlb: <evidence>`, stop and archive. A **flag** → continue, and put
-   the hours question at the top of the brief's "Needs Jack". This is independent of the
+   the hours question at the top of the brief's "Needs you". This is independent of the
    coherence verdict: long hours sold honestly are not incoherence, but they still fail here.
 5c3. **Set the lane.** Write `lane` per `strategy/auto-apply.md` ("Lanes"): `personal` for a
    held company, a first-degree company, a non-empty `referral_contact`, `track=deep`, or
@@ -343,7 +358,7 @@ Walk through the full pipeline for a new job posting end-to-end.
    readable in a minute instead of twenty.
 9. Update tracker: `company`, `role`, `application_url`, `stage=researched`
 
-**Deep track stops here** and surfaces `brief.md` to the user. His direction shapes the resume
+**Deep track stops here** and surfaces `brief.md` to the user. Their direction shapes the resume
 and the letter, so getting it before they are written is the point. Fast track continues
 through Stage 4 unattended.
 
@@ -382,10 +397,10 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
      $JOBS_DIR/applications/<id>/resume.md \
      "$JOBS_DIR/applications/<id>/Resume - <Name> - <Role>.pdf"
    ```
-   The output file is always named `Resume - <Name> - <Role>.pdf` (e.g. `Resume - Jack Senechal -
+   The output file is always named `Resume - <Name> - <Role>.pdf` (e.g. `Resume - <Your Name> -
    IT Director - AI.pdf`): the user wants the file name to read well for the recruiter who
-   downloads it. Never a bare `resume.pdf`. `--name` is required (flag or `$JOB_SEARCH_APPLICANT_NAME`
-   from `profile.md`); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
+   downloads it. Never a bare `resume.pdf`. The name comes from `--name`, `$JOB_SEARCH_APPLICANT_NAME`, or
+   `profile.md`'s "Full name" row (read automatically); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
    print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
 6. `xdg-open "$JOBS_DIR/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
 6a. **If the application portal is Workday** (the "Autofill with Resume" step), the styled PDF
@@ -394,7 +409,7 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
     ```bash
     <skill-dir>/scripts/make_resume_workday.sh \
       $JOBS_DIR/applications/<id>/resume.md \
-      --name "Jack Senechal" \
+      --name "<Your Name>" \
       --phone "<cell from profile.md>" \
       --edu-start <year from profile.md> \
       --link <website from profile.md>
@@ -468,7 +483,7 @@ Two roles, split on purpose. The **main thread (Opus or Fable) writes the outlin
 claim, which narrative leads, how the weak spot is handled, which particulars from `facts.md`
 each paragraph rests on. That is judgment work, and a fluent wrong answer is worse than no
 draft. A **`sonnet` subagent writes the prose** from that outline plus the voice profile,
-`facts.md`, and the brief; given a settled argument and a shape, it writes well and in Jack's
+`facts.md`, and the brief; given a settled argument and a shape, it writes well and in the user's
 register, and its sentences tend to be less mannered than the main thread's. The main thread
 then reviews and runs the gate.
 
@@ -477,9 +492,9 @@ stated rather than leaked: "My read of this seat is X. If X is wrong, the letter
 is Y." A read that goes unstated does not go away; it tints the outline as hedges or as
 enthusiasm and the drafter inherits the tint (Homebound, 2026-09-18: a "keep the spend low"
 read produced a defensive letter with no story in it). If Y will not come, stop and look
-before writing the outline. The same line goes in `brief.md` under Read, so Jack sees the
-prior, not just its effects, and if the read is "step down, dutiful", the brief's Needs Jack
-line asks him before a letter is spent on it.
+before writing the outline. The same line goes in `brief.md` under Read, so the user sees the
+prior, not just its effects, and if the read is "step down, dutiful", the brief's Needs you
+line asks them before a letter is spent on it.
 
 The outline is packed and short, and its length is a hard bound: **under 150 words of
 structure**, one numbered bullet per letter paragraph, each bullet a clause or two naming the
@@ -494,11 +509,11 @@ Homebound outline of 2026-09-18 (`homebound-tech-lead-manager/letter-outline.md`
 `applications/` or `applications/archived/`) is the reference example; the Nixon Peabody one
 is the over-specified counterexample.
 
-**Draft in Jack's voice from the first line** (`$JOBS_DIR/strategy/voice-profile.md`),
+**Draft in the user's voice from the first line** (`$JOBS_DIR/strategy/voice-profile.md`),
 not in generic cover-letter register to be rescued at the slop pass. Read the profile before
 drafting, including its whole-letter example and the register it assigns to the artifact
 (cover letters: warm-professional). Its traits are a palette, not a checklist: use the ones
-this letter calls for. A draft that starts in his voice needs far less fixing and reads as his.
+this letter calls for. A draft that starts in their voice needs far less fixing and reads as theirs.
 
 **The letter argues the brief.** `applications/<id>/brief.md` already says what this employer
 is hiring for and what the case is. Start there: the opening names their problem in their
@@ -559,7 +574,7 @@ behind account creation are the usual case): several Workday applications took n
 all, and each unused letter cost a full draft-and-gate cycle. In the no-slot and unknown
 cases, write `letter-outline.md` only (minutes, and it doubles as interview prep), record
 `Cover letter: none (no slot)` or `Cover letter: deferred (form gated)` in `brief.md`, and
-move on. Jack can kick off the letter later with `letter <id>` if the form turns out to take
+move on. The user can kick off the letter later with `letter <id>` if the form turns out to take
 one.
 
 When a letter is called for, draft it to
@@ -579,8 +594,9 @@ template script — do NOT hand-roll pandoc/Chrome styling each time:
 ```
 The script gives true 1in side / 0.5in top-bottom margins and roomy line spacing (it overrides
 pandoc's default `max-width`/padding, which otherwise reads as ~2in margins). Use a middle dot
-`·` (not a dash) in `--subtitle` to match the tailored resume title. `--name` is required (flag
-or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
+`·` (not a dash) in `--subtitle` to match the tailored resume title. The name comes from `--name`,
+`$JOB_SEARCH_APPLICANT_NAME`, or `profile.md`'s "Full name" row; the script bakes in no personal
+default.
 
 **Stage 5: Finalize & Push**
 
@@ -645,7 +661,7 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
 5c. **Watchlist poll.** Run `scripts/watch_companies.py` (no flags — a real run always updates
     the seen-state file; `--dry-run` is for manual trial only) against
     `$JOBS_DIR/strategy/watchlist.csv`. It lists open jobs at every company with a
-    public Greenhouse/Ashby/Lever board, filters to Jack's role families and US-remote/Bay
+    public Greenhouse/Ashby/Lever board, filters to the user's role families and US-remote/Bay
     Area geography, and prints `NEW`, `MOVED <id>`, `REOPENED <id>`, and `PRIOR <stage> <id>`
     rows (never edits the tracker itself — see the script's docstring for the matching order).
     For each line:
@@ -661,7 +677,7 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
       (SKILL.md "Archiving") instead of `add`: reuse the research, résumé, gate, and referral
       already on that row rather than redoing them.
     - `PRIOR <stage> <id>` (`stage` is `rejected` or `withdrawn`) → don't reopen or re-add.
-      Surface it to Jack once, in Needs You, with that row's last note — the reopen rule's
+      Surface it to the user once, in Needs You, with that row's last note — the reopen rule's
       second bullet.
     Companies with `ats=none` in the watchlist have no public board API; the weekly `liveness`
     run covers them by browser instead (see `references/orchestrator-loop.md`).
@@ -743,12 +759,17 @@ One command: `scout` → `vet` on every new company → `add` (Stages 1-5) for e
 verdict is `Advance` and whose posting is live. Stops before any submission, as always. See
 `references/coherence-pipeline.md` for the runbook and the expected shape of a run.
 
-### `northbay` — Weekly North Bay re-scout (orchestrator)
+### `runbook <path>` — The user's own scheduled work (orchestrator)
 
-Runs `$JOBS_DIR/strategy/north-bay-rescout.md` end to end. Installed as
-`job-search-northbay.timer` (Tuesdays 09:00). Manual run:
-`scripts/orchestrator.sh northbay [--force] [--dry-run]`. The runbook itself lives in the
-private repo, so changes to what this mode does go there, not here.
+Scheduled work specific to one user's search (a regional re-scout, a niche board sweep) is not
+a mode of this skill. It lives in the user's jobs repo as a runbook (a markdown file of steps)
+plus a `job-search-<name>.service`/`.timer` pair in `$JOBS_DIR/ops/systemd/`, whose
+`ExecStart` is `@SKILL_DIR@/scripts/orchestrator.sh runbook <path in jobs repo>`.
+`install-orchestrator.sh` installs those units alongside the skill's own (filling in
+`@SKILL_DIR@` and `@JOBS_DIR@`), and the run gets the same lock, log line, failure count and
+golden-browser preflight as the built-in modes (`--no-browser` skips the preflight). The run
+writes its one-line summary to `$JOBS_DIR/.<runbook name>-last-summary`. Manual run:
+`scripts/orchestrator.sh runbook <path> [--no-browser] [--force] [--dry-run]`.
 
 ### `network` — Weekly networking loop (orchestrator)
 
@@ -763,7 +784,7 @@ Read `references/networking-loop.md` first. Normally invoked by a systemd timer 
    recommendation for the week, free to say "stay the course."
 3. **Direction pass.** Write `strategy/networking/this-week.md`: at most two touches, each
    with a one-sentence reason, plus a dated `journal.md` entry.
-4. Hard limits: **never sends** anything (drafts are marked `DRAFT`, Jack sends), **no
+4. Hard limits: **never sends** anything (drafts are marked `DRAFT`, the user sends), **no
    LinkedIn** (no golden browser), **at most two touches** in `this-week.md`, and it **never
    changes tracker stage** (it may write `referral_contact`/`referral_status`).
 5. Commit and push the jobs repo, append a run line to `orchestrator.log`, rebuild the
@@ -789,7 +810,7 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
    - Network error, timeout, or an unparseable page (e.g. JS-only careers page with no API) →
      **inconclusive** — the run truly can't tell. Increment a counter in `notes`, leave
      `stage` untouched, retry next week. Never archive on a network error alone.
-   - Inconclusive 4 weeks running → add the note `LIVENESS: needs Jack <date>` so it surfaces
+   - Inconclusive 4 weeks running → add the note `LIVENESS: needs user <date>` so it surfaces
      on the tracker page's Needs You section (`artifact/build.py`), still no auto-archive.
    - Rows at `interviewing` or `offer` are **never touched**; if their posting looks closed,
      say so in the summary and leave the stage alone. A closed posting during an active process
@@ -814,18 +835,18 @@ Read `references/orchestrator-loop.md` first. Normally invoked by a systemd time
 ### `apply` — Auto-apply run (not yet on a timer)
 
 Fills, and — once `$JOBS_DIR/auto-apply.json` says `"mode": "live"` — submits
-applications for rows Jack has approved into the `auto` lane (`strategy/auto-apply.md`). Full
+applications for rows the user has approved into the `auto` lane (`strategy/auto-apply.md`). Full
 procedure: `references/auto-apply-runbook.md`. Short version: lane decisions arrive already
 synced into `tracker.csv` by the steward (headless `apply` has no `ArtifactData` tool), pick up
 to `daily_cap` approved rows respecting `max_live_per_company`, make
 sure the résumé/cover-letter materials clear the External Output Gate, resolve and fill the
-live form in the golden browser (never LinkedIn Easy Apply, Workday hands off to Jack), hand a
-row back to Jack on any stop condition (legal/attestation question, AI-ban, login wall, unknown
+live form in the golden browser (never LinkedIn Easy Apply, Workday hands off to the user), hand a
+row back to the user on any stop condition (legal/attestation question, AI-ban, login wall, unknown
 field, lost filename, no real "why us" answer), push a CAPTCHA alert and wait rather than
 retrying past it, then branch on mode — shadow stops before Submit, live clicks it and marks
 `applied`, paused does nothing. Always ends with a commit/push and a tracker artifact rebuild
 (the steward republishes; headless `apply` cannot). Run by hand for now
-(`scripts/orchestrator.sh apply`); Jack installs the timer once he's seen a few runs.
+(`scripts/orchestrator.sh apply`); the user installs the timer once they've seen a few runs.
 
 ### `watch setup` — Install the orchestrator timers
 
@@ -833,8 +854,8 @@ retrying past it, then branch on mode — shadow stops before Submit, live click
 2. Run `<skill-dir>/scripts/install-orchestrator.sh`, which
    installs and enables the systemd user timers. `--uninstall` reverses it.
 3. Verify with `systemctl --user list-timers 'job-search-*'`. Expect `job-search-discover`
-   (06:00), `job-search-liveness` (Sun 10:00), `job-search-northbay` (Tue 09:00), and
-   `job-search-network` (Mon 08:00). If a mode is missing from the list, it is not running, no
+   (06:00), `job-search-liveness` (Sun 10:00) and
+   `job-search-network` (Mon 08:00), plus any timers from `$JOBS_DIR/ops/systemd/`. If a mode is missing from the list, it is not running, no
    matter what the docs say.
 4. User timers only fire while a login session exists unless lingering is on. Check with
    `loginctl show-user "$USER" --property=Linger`; enable with `loginctl enable-linger $USER`.
@@ -873,7 +894,7 @@ See `references/knowledge-graph.md` → "Lifecycle".
 ### `letter <id>` — Write the cover letter for an application that skipped it
 
 For a row whose Stage 4 recorded `Cover letter: none` or `deferred` and where a slot has since
-turned up (the form accepted an attachment, a recruiter asked, Jack wants one anyway). Runs
+turned up (the form accepted an attachment, a recruiter asked, the user wants one anyway). Runs
 Stage 4's letter path only: read `brief.md` and `letter-outline.md` (write the outline first if
 it is missing), hand the outline to a `sonnet` drafter with the voice profile and `facts.md`,
 review, run the External Output Gate, render the one-page PDF, update `brief.md`'s cover-letter
@@ -891,7 +912,7 @@ whose letter has no `applications/<id>/fact-check.md` yet (i.e. never gated).
 
 Per application:
 1. Run the gate exactly as Stage 4 does: fact check (`sonnet` subagent, read-only, against the
-   current `strategy/facts.md` including its guardrails and the Kantata wire diagram) → reconcile
+   current `strategy/facts.md` including its guardrails) → reconcile
    on the main thread → `no-ai-slop` Edit pass → `scripts/check_claims.sh <file>` must exit clean.
 2. Append the verdict table to `applications/<id>/fact-check.md` under a dated heading. Its
    presence is what marks the letter gated, so `--all-unsent` skips it next time.
@@ -1061,9 +1082,9 @@ of starting fresh:
   substance → keep the résumé, letter, and gate results as they are. Changed → flag what
   changed in the note and re-gate only the parts the change touches. Keep `referral_contact`
   and `referral_status` as they were; if there's a referral contact, add a line to
-  `strategy/networking/inbox.md` telling Jack to let them know it's back up.
-- **Archived as `rejected` or `withdrawn`:** don't reopen or re-add. Surface it to Jack once
-  (tracker page's Needs You) with the row's last note — re-applying after a rejection is his
+  `strategy/networking/inbox.md` telling the user to let them know it's back up.
+- **Archived as `rejected` or `withdrawn`:** don't reopen or re-add. Surface it to the user once
+  (tracker page's Needs You) with the row's last note — re-applying after a rejection is their
   call, cooldowns exist.
 
 ## CSV Read/Write
@@ -1128,7 +1149,7 @@ runtime (flags / env / read from the private profile) instead.
 ## Important Rules
 
 1. **Run end-to-end without pausing.** The user reviews everything after the pipeline completes.
-    A deep-track row is the one designed stopping point: it ends at `brief.md` and waits for his
+    A deep-track row is the one designed stopping point: it ends at `brief.md` and waits for their
     direction. Never ask for confirmation anywhere else.
 2. **CAPTCHA = STOP.** If any `browser_snapshot` or `browser_screenshot` reveals a CAPTCHA, security challenge, "unusual activity" warning, or bot-detection interstitial on ANY site (LinkedIn, Glassdoor, Greenhouse, Lever, Workday, etc.): immediately stop all browser automation, navigate to `google.com`, and ask the user to resolve it via noVNC (http://localhost:6080/vnc.html). Wait for confirmation before resuming. Never attempt to solve or bypass a captcha. This is the only *unplanned* stop; the deep-track handoff in Rule 1 is the only planned one.
 3. **Route research correctly (see "Research Routing").** All research runs as Claude
@@ -1176,7 +1197,7 @@ runtime (flags / env / read from the private profile) instead.
     session, after any change to `tracker.csv` or to a `job-posting.md` location line: rebuild
     (`python3 artifact/build.py`) and publish `artifact/tracker-view.html` with the Artifact
     tool, passing the pinned URL from the private repo's `artifact/README.md` as `url` (never
-    create a new artifact). **Headless runs** (`discover`, `liveness`, `northbay`, `network`,
+    create a new artifact). **Headless runs** (`discover`, `liveness`, `runbook`, `network`,
     `apply`) have no Artifact tool and cannot publish, and `tracker-view.html` is gitignored
     generated output, so they just commit and push `tracker.csv`; the steward session is the
     only one with the Artifact tool here, and it rebuilds and republishes on its sync-publish

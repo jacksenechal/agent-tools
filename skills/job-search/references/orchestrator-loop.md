@@ -1,19 +1,20 @@
 # Orchestrator Loop
 
 A long-running background loop that keeps the pipeline fed and current without the user
-driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
-sync** (`liveness`, Sundays 10:00), a **weekly North Bay re-scout** (`northbay`, Tuesdays
-09:00, which runs `$JOBS_DIR/strategy/north-bay-rescout.md` end to end), and a **weekly
-networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below). A fifth mode,
-**auto-apply** (`apply`), exists but is **not installed as a timer yet** — Jack runs it by hand
-until he's seen enough runs to trust the schedule (see "Auto-apply" below).
+driving it. Three scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
+sync** (`liveness`, Sundays 10:00), and a **weekly networking loop** (`network`, Mondays 08:00,
+see "Weekly networking loop" below). The user can add their own with **`runbook <path>`**,
+which runs a runbook from their jobs repo on a timer they ship in `$JOBS_DIR/ops/systemd/`
+(see SKILL.md, "`runbook <path>`"). A fifth mode,
+**auto-apply** (`apply`), exists but is **not installed as a timer yet** — the user runs it by hand
+until they've seen enough runs to trust the schedule (see "Auto-apply" below).
 
 Discovery's jitter is deliberately small (15 min): it rebuilds the tracker artifact and
 commits at the end of every run (headless, so it cannot publish — the steward session
 republishes on its sync-publish cron), and a small jitter keeps the committed rebuild ready
 early so the steward's 06:40 early pass has something fresh to publish.
 
-All five are modes of `scripts/orchestrator.sh <discover|liveness|northbay|network|apply>`,
+All are modes of `scripts/orchestrator.sh <discover|liveness|network|apply|runbook <path>>`,
 which is also how to run one by hand. Installed timers are the ground truth for what is
 actually running: `systemctl --user list-timers 'job-search-*'`.
 
@@ -97,7 +98,7 @@ Runs once a day at a randomized time (see Scheduling).
    the full procedure and what each status means). `NEW` matches go through `add`; `MOVED <id>`
    is a liveness signal on a live row, not a new find; `REOPENED <id>` matches go through the
    reopen rule (SKILL.md "Archiving") instead, reusing the research/résumé/gate/referral
-   already on that row; `PRIOR <stage> <id>` (rejected/withdrawn) is surfaced to Jack once,
+   already on that row; `PRIOR <stage> <id>` (rejected/withdrawn) is surfaced to the user once,
    never auto-reopened. Watchlist companies with no public board (`ats=none`) are covered by
    the weekly liveness run instead (below), not here.
 6. **Commit and push** the jobs repo, every run, even when zero new jobs were found: the
@@ -157,7 +158,7 @@ Outcomes:
 | Network error / timeout / redirect / unparseable page (no board API available) | **Inconclusive.** Increment a counter in `notes`, leave `stage` alone, retry next week |
 
 An inconclusive result that persists for **4 consecutive weeks** gets the note `LIVENESS:
-needs Jack <date>` added — this is what the run truly cannot tell (e.g. a JS-only careers page
+needs user <date>` added — this is what the run truly cannot tell (e.g. a JS-only careers page
 it can't read), surfaced on the tracker page's Needs You section via that marker
 (`artifact/build.py`). It still does not auto-archive.
 
@@ -205,33 +206,32 @@ The coach + researcher + strategist pass over the sustained networking track. Fu
 `strategy/networking/README.md`.
 
 It does not touch the browser (no LinkedIn, no golden session) and never sends anything —
-drafts land in a person's thread file marked `DRAFT` for Jack to send. It writes
+drafts land in a person's thread file marked `DRAFT` for the user to send. It writes
 `strategy/networking/this-week.md` (at most two touches) and a dated `journal.md` entry, and
 never changes a tracker row's stage.
 
 ## Auto-apply (`apply`)
 
 Fills, and once `auto-apply.json` says `"mode": "live"`, submits applications for tracker rows
-Jack has approved into the `auto` lane. Framework: the private repo's `strategy/auto-apply.md`.
+the user has approved into the `auto` lane. Framework: the private repo's `strategy/auto-apply.md`.
 Full procedure: `references/auto-apply-runbook.md`.
 
-It needs the golden browser like `discover`/`liveness`/`northbay` do (this script's preflight
+It needs the golden browser like `discover`/`liveness`/`runbook` do (this script's preflight
 covers it — `apply` is not in the `network`-only skip list), runs one row at a time, never
 submits unless the mode file says `live` at the moment of the click, and hands a row back to
-Jack (sets `lane=personal` with a note) on any stop condition rather than guessing. **Not
-installed as a systemd timer** — run it by hand (`scripts/orchestrator.sh apply`) until Jack has
+the user (sets `lane=personal` with a note) on any stop condition rather than guessing. **Not
+installed as a systemd timer** — run it by hand (`scripts/orchestrator.sh apply`) until the user has
 reviewed enough shadow runs to trust scheduling it.
 
 ## Scheduling
 
-Four systemd user timers. All use `RandomizedDelaySec` so the loop does not hit these sites
+Three systemd user timers from this skill, plus any the user ships for their runbooks. All use `RandomizedDelaySec` so the loop does not hit these sites
 at the same wall-clock minute every run, which is itself a bot signal.
 
 | Timer | Cadence | Randomization |
 |---|---|---|
 | `job-search-discover.timer` | daily, 06:00 | `RandomizedDelaySec=900` (±15 min) |
 | `job-search-liveness.timer` | weekly, Sun 10:00 | `RandomizedDelaySec=10800` (±3 h) |
-| `job-search-northbay.timer` | weekly, Tue 09:00 | `RandomizedDelaySec=7200` (±2 h) |
 | `job-search-network.timer` | weekly, Mon 08:00 | `RandomizedDelaySec=900` (±15 min); no browser needed |
 
 Additionally, the discovery run **skips at random roughly one day in seven**. Perfect daily
