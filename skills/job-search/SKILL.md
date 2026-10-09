@@ -42,7 +42,7 @@ The orchestrator runs on timers rather than on request:
 |---|---|---|
 | `discover` | daily 06:00 (+15m jitter) | scan saved-job lists, auto-add, research |
 | `liveness` | Sundays 10:00 | are pre-application postings still open, sync saved lists |
-| `northbay` | Tuesdays 09:00 | run `strategy/north-bay-rescout.md` end to end |
+| `runbook <path>` | the user's own timers | run a runbook from the jobs repo end to end (see below) |
 | `network` | Mondays 08:00 | weekly networking loop: fold in progress, deep think, write `this-week.md` |
 | `apply` | manual only, no timer yet | auto-apply run: fill (shadow) or submit (live) approved rows, per `auto-apply.json` |
 
@@ -759,12 +759,17 @@ One command: `scout` → `vet` on every new company → `add` (Stages 1-5) for e
 verdict is `Advance` and whose posting is live. Stops before any submission, as always. See
 `references/coherence-pipeline.md` for the runbook and the expected shape of a run.
 
-### `northbay` — Weekly North Bay re-scout (orchestrator)
+### `runbook <path>` — The user's own scheduled work (orchestrator)
 
-Runs `$JOBS_DIR/strategy/north-bay-rescout.md` end to end. Installed as
-`job-search-northbay.timer` (Tuesdays 09:00). Manual run:
-`scripts/orchestrator.sh northbay [--force] [--dry-run]`. The runbook itself lives in the
-private repo, so changes to what this mode does go there, not here.
+Scheduled work specific to one user's search (a regional re-scout, a niche board sweep) is not
+a mode of this skill. It lives in the user's jobs repo as a runbook (a markdown file of steps)
+plus a `job-search-<name>.service`/`.timer` pair in `$JOBS_DIR/ops/systemd/`, whose
+`ExecStart` is `@SKILL_DIR@/scripts/orchestrator.sh runbook <path in jobs repo>`.
+`install-orchestrator.sh` installs those units alongside the skill's own (filling in
+`@SKILL_DIR@` and `@JOBS_DIR@`), and the run gets the same lock, log line, failure count and
+golden-browser preflight as the built-in modes (`--no-browser` skips the preflight). The run
+writes its one-line summary to `$JOBS_DIR/.<runbook name>-last-summary`. Manual run:
+`scripts/orchestrator.sh runbook <path> [--no-browser] [--force] [--dry-run]`.
 
 ### `network` — Weekly networking loop (orchestrator)
 
@@ -849,8 +854,8 @@ retrying past it, then branch on mode — shadow stops before Submit, live click
 2. Run `<skill-dir>/scripts/install-orchestrator.sh`, which
    installs and enables the systemd user timers. `--uninstall` reverses it.
 3. Verify with `systemctl --user list-timers 'job-search-*'`. Expect `job-search-discover`
-   (06:00), `job-search-liveness` (Sun 10:00), `job-search-northbay` (Tue 09:00), and
-   `job-search-network` (Mon 08:00). If a mode is missing from the list, it is not running, no
+   (06:00), `job-search-liveness` (Sun 10:00) and
+   `job-search-network` (Mon 08:00), plus any timers from `$JOBS_DIR/ops/systemd/`. If a mode is missing from the list, it is not running, no
    matter what the docs say.
 4. User timers only fire while a login session exists unless lingering is on. Check with
    `loginctl show-user "$USER" --property=Linger`; enable with `loginctl enable-linger $USER`.
@@ -1192,7 +1197,7 @@ runtime (flags / env / read from the private profile) instead.
     session, after any change to `tracker.csv` or to a `job-posting.md` location line: rebuild
     (`python3 artifact/build.py`) and publish `artifact/tracker-view.html` with the Artifact
     tool, passing the pinned URL from the private repo's `artifact/README.md` as `url` (never
-    create a new artifact). **Headless runs** (`discover`, `liveness`, `northbay`, `network`,
+    create a new artifact). **Headless runs** (`discover`, `liveness`, `runbook`, `network`,
     `apply`) have no Artifact tool and cannot publish, and `tracker-view.html` is gitignored
     generated output, so they just commit and push `tracker.csv`; the steward session is the
     only one with the Artifact tool here, and it rebuilds and republishes on its sync-publish

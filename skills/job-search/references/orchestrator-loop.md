@@ -1,10 +1,11 @@
 # Orchestrator Loop
 
 A long-running background loop that keeps the pipeline fed and current without the user
-driving it. Four scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
-sync** (`liveness`, Sundays 10:00), a **weekly North Bay re-scout** (`northbay`, Tuesdays
-09:00, which runs `$JOBS_DIR/strategy/north-bay-rescout.md` end to end), and a **weekly
-networking loop** (`network`, Mondays 08:00, see "Weekly networking loop" below). A fifth mode,
+driving it. Three scheduled jobs: **daily discovery** (`discover`, 06:00), **weekly liveness +
+sync** (`liveness`, Sundays 10:00), and a **weekly networking loop** (`network`, Mondays 08:00,
+see "Weekly networking loop" below). The user can add their own with **`runbook <path>`**,
+which runs a runbook from their jobs repo on a timer they ship in `$JOBS_DIR/ops/systemd/`
+(see SKILL.md, "`runbook <path>`"). A fifth mode,
 **auto-apply** (`apply`), exists but is **not installed as a timer yet** — the user runs it by hand
 until they've seen enough runs to trust the schedule (see "Auto-apply" below).
 
@@ -13,7 +14,7 @@ commits at the end of every run (headless, so it cannot publish — the steward 
 republishes on its sync-publish cron), and a small jitter keeps the committed rebuild ready
 early so the steward's 06:40 early pass has something fresh to publish.
 
-All five are modes of `scripts/orchestrator.sh <discover|liveness|northbay|network|apply>`,
+All are modes of `scripts/orchestrator.sh <discover|liveness|network|apply|runbook <path>>`,
 which is also how to run one by hand. Installed timers are the ground truth for what is
 actually running: `systemctl --user list-timers 'job-search-*'`.
 
@@ -215,7 +216,7 @@ Fills, and once `auto-apply.json` says `"mode": "live"`, submits applications fo
 the user has approved into the `auto` lane. Framework: the private repo's `strategy/auto-apply.md`.
 Full procedure: `references/auto-apply-runbook.md`.
 
-It needs the golden browser like `discover`/`liveness`/`northbay` do (this script's preflight
+It needs the golden browser like `discover`/`liveness`/`runbook` do (this script's preflight
 covers it — `apply` is not in the `network`-only skip list), runs one row at a time, never
 submits unless the mode file says `live` at the moment of the click, and hands a row back to
 the user (sets `lane=personal` with a note) on any stop condition rather than guessing. **Not
@@ -224,14 +225,13 @@ reviewed enough shadow runs to trust scheduling it.
 
 ## Scheduling
 
-Four systemd user timers. All use `RandomizedDelaySec` so the loop does not hit these sites
+Three systemd user timers from this skill, plus any the user ships for their runbooks. All use `RandomizedDelaySec` so the loop does not hit these sites
 at the same wall-clock minute every run, which is itself a bot signal.
 
 | Timer | Cadence | Randomization |
 |---|---|---|
 | `job-search-discover.timer` | daily, 06:00 | `RandomizedDelaySec=900` (±15 min) |
 | `job-search-liveness.timer` | weekly, Sun 10:00 | `RandomizedDelaySec=10800` (±3 h) |
-| `job-search-northbay.timer` | weekly, Tue 09:00 | `RandomizedDelaySec=7200` (±2 h) |
 | `job-search-network.timer` | weekly, Mon 08:00 | `RandomizedDelaySec=900` (±15 min); no browser needed |
 
 Additionally, the discovery run **skips at random roughly one day in seven**. Perfect daily
