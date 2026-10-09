@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Daily watchlist poller: new roles at companies Jack cares about.
+"""Daily watchlist poller: new roles at companies the user cares about.
 
 Reads `strategy/watchlist.csv` in the jobs repo (company, ats, slug, reason,
 contact), lists open jobs on each company's public Greenhouse/Ashby/Lever
-board, filters to Jack's role families and US-remote/Bay-Area geography, and
+board, filters to the user's role families and US-remote/Bay-Area geography, and
 reports postings that are not already in `tracker.csv` (any stage, including
 archived rows) and not already reported via `data/watchlist-seen.json`.
 
@@ -21,7 +21,7 @@ Matching, in order:
            (SKILL.md, "Archiving") applies: reuse the research/résumé/gate/
            referral, re-add through `add`.
          - matched row stage in (rejected, withdrawn) -> PRIOR <stage> <id>.
-           Surfaced to Jack, never auto-reopened or auto-added.
+           Surfaced to the user, never auto-reopened or auto-added.
          - matched row is anything else (a live row: discovered through
            offer) -> MOVED <id>. Useful liveness signal (the posting moved
            ATS or got a new id/URL at the same company) but not a new find
@@ -59,7 +59,7 @@ DEFAULT_SEEN = "data/watchlist-seen.json"
 USER_AGENT = "Mozilla/5.0 (compatible; job-search-watchlist/1.0)"
 TIMEOUT_DEFAULT = 10
 
-# Jack's role families. A title matches only if it carries a leadership
+# The user's role families. A title matches only if it carries a leadership
 # word, OR is a staff/principal IC title in the platform/infra/SRE/DevOps
 # family -- plain senior or mid IC titles are out even when they name one of
 # those domains (e.g. "Senior Cluster Site Reliability Engineer", "Software

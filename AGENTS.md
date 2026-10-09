@@ -15,6 +15,9 @@ must contain **no personally identifiable information (PII)** and no user-specif
   not hardcode a default that embeds a real person.
 - In docs and examples, use placeholders (`<Your Name>`, `<Company>`, `<Role>`) rather than real
   values.
+- Refer to the person a skill works for as **"the user"** (pronouns they/them), never by name.
+  Strings the code writes or parses (tracker note markers, brief headings) are generic too
+  (e.g. `LIVENESS: needs user <date>`, `## Needs you`).
 
 **Where personal details live:** the user's private repos (for the job-search skill, that's the
 jobs repo, `$JOBS_DIR`, including `profile.md`). Read from there at runtime; never copy into

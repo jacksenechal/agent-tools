@@ -1,6 +1,6 @@
 # External Output Gate
 
-Every word a hiring organization reads passes through this gate before Jack sees it as
+Every word a hiring organization reads passes through this gate before the user sees it as
 "ready". Two separate responsibilities, two separate agents, in a fixed order.
 
 ## What counts as externally-facing
@@ -12,12 +12,12 @@ that changed in this session.
 Internal artifacts (`job-posting.md`, `glassdoor.md`, `company-research.md`, tracker
 notes, strategy docs) do not go through the gate.
 
-**Scope test: does the text make claims about Jack's record** (numbers, titles, dates, scope,
-what he did or built)? If yes, it is gated, whatever its length. If no, it is outside the gate:
+**Scope test: does the text make claims about the user's record** (numbers, titles, dates, scope,
+what they did or built)? If yes, it is gated, whatever its length. If no, it is outside the gate:
 a short courtesy note whose whole content is thanks, continued interest, and logistics that
 restate the thread (an acknowledgment of "we'll restart in Q4", a scheduling reply) gets
-`check_claims.sh` if it is saved to a file and is then handed to Jack, who edits it himself. No
-fact-check agent, no slop agent. When it is unclear whether a sentence is a claim about his
+`check_claims.sh` if it is saved to a file and is then handed to the user, who edits it themselves. No
+fact-check agent, no slop agent. When it is unclear whether a sentence is a claim about their
 record, it is. (Added 2026-09-21, after a fact-check agent was spawned on a 53-word
 acknowledgment.)
 
@@ -28,25 +28,25 @@ Facts settle first, prose second, machine check last.
 1. **Draft** on the main thread (Opus). Judgment work: what to claim, which narrative
    leads, how a weak spot is handled honestly. Write it properly; do not assemble it out of
    `facts.md`. Look up the *particulars* there (numbers, titles, dates, scope) rather than
-   recalling them, and let the argument be your own. **Draft in Jack's voice from the first
+   recalling them, and let the argument be your own. **Draft in the user's voice from the first
    line** (`strategy/voice-profile.md`), not in generic cover-letter register to be fixed
    later. The slop pass is a backstop, not the place voice is supposed to arrive; a draft that
-   starts in his voice needs far less rescue.
+   starts in their voice needs far less rescue.
 2. **Fact check** — `sonnet` subagent, read-only, protocol below. Runs on the *raw* draft.
 3. **Reconcile** on the main thread. Apply the fixes yourself.
 4. **Slop pass** — `sonnet` subagent running `no-ai-slop` in Edit mode.
 5. **Mechanical re-check** — `scripts/check_claims.sh <file>`. Deterministic, no tokens.
    Catches drift the slop pass introduced and banned strings anywhere in the corpus.
-6. **Render / present.** PDF, or a paste-ready block for Jack.
+6. **Render / present.** PDF, or a paste-ready block for the user.
 
 Why facts before polish: the County CIO letter took six revision passes, and the two
 factual corrections (wrong Kantata title, inflated platform scope) landed *after* four
 tone and length passes. Every editorial pass spent on a sentence that later has to change
 its claim is wasted, and a polished sentence is harder to notice as wrong.
 
-Never render a PDF or tell Jack a draft is ready before steps 2, 4, and 5 have all run. If
-Jack edits a draft afterward and asks for a re-render, run step 5; do not re-run the slop
-pass on his own edits, since his wording is the target, not the input.
+Never render a PDF or tell the user a draft is ready before steps 2, 4, and 5 have all run. If
+the user edits a draft afterward and asks for a re-render, run step 5; do not re-run the slop
+pass on their own edits, since their wording is the target, not the input.
 
 ## Propagation
 
@@ -72,7 +72,7 @@ Spawn a `sonnet` agent with the `no-ai-slop` skill, Edit mode. Hand it:
   reference: not just "remove AI patterns" but "sound like *this*". The slop skill preserves
   the writer's voice; the profile makes that concrete. Tell it to match the register the
   profile assigns to this artifact (cover letters: warm-professional with a touch of
-  conviction) and to use Jack's real moves (the honest-limits move, concrete grounding, genuine
+  conviction) and to use the user's real moves (the honest-limits move, concrete grounding, genuine
   hedges kept) while cutting the tells the profile names. No em dashes or en dashes, ever.
 - an explicit instruction: **do not add, sharpen, or quantify any claim.** It may cut and
   it may rephrase, but a number, title, date, or scope statement that was not in the
@@ -94,8 +94,8 @@ own guesses into the text.
 | 1 | `$RESUME_DIR/resume.md` on `main` | Employment history, titles, dates. Wins all conflicts. |
 | 1 | `$JOBS_DIR/strategy/facts.md` | Canonical atomic facts and negative guardrails. |
 | 1 | `$JOBS_DIR/strategy/narrative.md` | Project stories, values, framing constraints. |
-| voice | `$JOBS_DIR/strategy/voice-profile.md` | How Jack writes. The slop pass targets this; the fact check ignores it (voice is not a fact). |
-| 2 | `$SITE_DIR/` | Jack's public site. Public, so citable, and claims must not contradict it. |
+| voice | `$JOBS_DIR/strategy/voice-profile.md` | How the user writes. The slop pass targets this; the fact check ignores it (voice is not a fact). |
+| 2 | `$SITE_DIR/` | The user's public site. Public, so citable, and claims must not contradict it. |
 | 2 | `$JOBS_DIR/profile.md` | Logistics: location, work authorization, links. |
 | 3 | `applications/<id>/*.md` for this job | Claims about the *company*. Only counts if it carries a `SOURCES:` URL. |
 
@@ -119,7 +119,7 @@ Then a one-line bottom line: `CLEAR` or `N blocking issues`. Nothing else. No pr
 summary of the letter, no rewrite.
 
 `GUARDRAIL`, `CONTRADICTED`, and `COMPANY-UNSOURCED` are blocking. `OVERSTATED` and
-`UNSUPPORTED` are blocking unless Jack has explicitly approved the claim in this session.
+`UNSUPPORTED` are blocking unless the user has explicitly approved the claim in this session.
 
 ### Standing checks
 

@@ -71,14 +71,13 @@ Rules learned from a third live Workday "Autofill with Resume" test (2026-10-05)
 exists only to drive the parser (see the "safe for the end recruiter" note below), so wording
 chosen purely for parser behavior is fine even if it wouldn't be on the real résumé:
   - The Independent Consultant entry's forced Company (see the "Self-employed" rule further
-    below) is now "Senechal Consulting" instead of "Self-employed": Jack's direction is that this
-    reads as an actual org name to the parser rather than a status word. The title stays
-    "Independent Consultant". Updated again 2026-10-05: forced Company changed to "Freelance"
-    (Jack's preferred value), then reverted back to "Senechal Consulting" the same day: a live
-    Workday "Autofill with Resume" test against this script's docx output (Early Warning tenant)
-    came back with the Company field blank for "Freelance" (confirming the earlier plain-PDF
-    result), while "Senechal Consulting" is confirmed working. If Jack wants to retry "Freelance"
-    on a different tenant, test it first rather than assuming it is this tenant-specific.
+    below) should be an actual org name (e.g. "<Surname> Consulting") rather than a status word
+    like "Self-employed", so the parser reads it as a company. It comes from
+    $JOB_SEARCH_SELF_EMPLOYED_COMPANY (set it from the user's private profile); without it the
+    fallback is "Self-employed". The title stays "Independent Consultant". "Freelance" was also
+    tried (2026-10-05): a live Workday "Autofill with Resume" test against this script's docx
+    output came back with the Company field blank for it, while an "<X> Consulting" org name was
+    confirmed working. Test any other value on a live tenant before relying on it.
   - The Education entry's school name "University of North Carolina at Asheville" is rendered as
     "University of North Carolina Asheville" (no "at"): Workday's School field didn't match the
     "at Asheville" form against its lookup. See SCHOOL_NAME_OVERRIDES — narrow, exact-match
@@ -97,7 +96,7 @@ Company, Location, Dates) and no concept of a non-job section:
     "Consultant" as the title and "AI-Native Software Delivery" as the company.
   - Narrow rule: when the (pre-strip) title contains "Independent" or "Consultant" (case
     insensitive), the Company field is forced to a fixed value (see the third-test note above for
-    its current text, "Senechal Consulting") regardless of what the source's
+    $JOB_SEARCH_SELF_EMPLOYED_COMPANY) regardless of what the source's
     "#### Company | Dates | Location" line says. This exists specifically for the
     "Independent Consultant" entry, whose source company text ("Client engagements") is a
     descriptive phrase, not an org name, and Workday parsed it as a second title/company pair.
@@ -145,6 +144,7 @@ Usage:
         [--keep-summary] [--phone PHONE] [--edu-start YEAR] [--link URL ...]
 """
 
+import os
 import re
 import sys
 
@@ -266,7 +266,8 @@ KEPT_SECTIONS_BASE = ("Experience", "Education", "Skills")
 
 TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
-SELF_EMPLOYED_COMPANY = "Senechal Consulting"
+# A personal value, so it is supplied at run time (see module docstring), never hard-coded here.
+SELF_EMPLOYED_COMPANY = os.environ.get("JOB_SEARCH_SELF_EMPLOYED_COMPANY") or "Self-employed"
 SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
 
 # Narrow, exact-match school-name overrides learned from a live Workday parser test (see module

@@ -35,7 +35,7 @@ conditional on "looks done" or "test mode."
    link from `profile.md` so the docx doesn't need manual fixing after upload:
    ```bash
    <skill-dir>/scripts/make_resume_workday.sh <resume.md> \
-     --name "Jack Senechal" \
+     --name "<Your Name>" \
      --phone "<cell from profile.md>" \
      --edu-start <year from profile.md> \
      --link <website from profile.md>
@@ -47,7 +47,7 @@ conditional on "looks done" or "test mode."
 
 **My Information**
 - Legal name parses to the *preferred* name in both Legal and Preferred fields (e.g. both show
-  "Jack"). Fix the Legal First Name back to "John" — tick stays on "I have a preferred name."
+  the preferred name). Fix the Legal First Name back to the legal name — tick stays on "I have a preferred name."
 - Phone defaults to whatever's in the docx. As of 2026-10-05 the standard render invocation
   (step 3) passes `--phone` with the cell already, so this should come in correct; if it still
   shows the public Google Voice number (e.g. the docx was rendered without `--phone`), overwrite
@@ -64,11 +64,11 @@ conditional on "looks done" or "test mode."
   restore it for a tenant retest). If Role Description ever starts with Summary-sounding prose
   instead of the job's own scope/bullets, re-render with a current script version.
 - Known residue: the consulting entry's Job Title parses as "Consultant" — fix to "Independent
-  Consultant." Its Company currently renders correctly as **"Senechal Consulting"**
-  (`SELF_EMPLOYED_COMPANY` in `resume_to_workday_md.py`). "Freelance" was tried as Jack's
-  preferred value 2026-10-05 and came back with Company **blank** on this tenant (confirming an
-  earlier plain-PDF test); reverted. If the preference comes up again, test it fresh — don't
-  assume it's fixed without a live check.
+  Consultant." Its Company renders correctly when `$JOB_SEARCH_SELF_EMPLOYED_COMPANY` is set to
+  an org-style name such as "<Surname> Consulting" (set it from `profile.md`; see
+  `SELF_EMPLOYED_COMPANY` in `resume_to_workday_md.py`). "Freelance" was tried 2026-10-05 and came
+  back with Company **blank** on this tenant (confirming an earlier plain-PDF test); reverted. If
+  it comes up again, test it fresh — don't assume it's fixed without a live check.
 - **New finding (2026-10-05): Workday's free-text fields (confirmed on Role Description) reject
   straight `" \ < > [ ] { }` characters outright** ("Contains illegal characters...") and block
   Save and Continue with a field-level error until fixed. `resume_to_workday_md.py`'s `plain()`
@@ -118,14 +118,13 @@ conditional on "looks done" or "test mode."
   unless `profile.md` has an answer; these are rarely load-bearing.
 
 **Voluntary Disclosures**
-- EEO block maps directly from `profile.md`: gender, ethnicity (the "Hispanic or Latino?"
-  sub-question is implied by "White (Not Hispanic or Latino)" — answer No), veteran status.
+- EEO block maps directly from `profile.md`: gender, ethnicity (answer the "Hispanic or Latino?"
+  sub-question consistently with the ethnicity answer), veteran status.
 - Check the terms-and-conditions consent box; it's required to proceed.
 
 **Self Identify**
-- Form CC-305 (disability self-ID). `profile.md` now carries Jack's standing answer: **"No, I do
-  not have a disability."** Use that checkbox, not "I do not want to answer" — Jack corrected
-  this mid-run on 2026-10-05, so treat it as settled unless told otherwise.
+- Form CC-305 (disability self-ID). Use the standing answer in `profile.md`; don't default to "I
+  do not want to answer" unless that is what `profile.md` says.
 - Name and Date fields on this form are required despite no visible asterisk until the
   validation error fires — fill Name (legal name) and today's date.
 - The two disability-answer checkboxes besides the one you want are `disabled` while another is
@@ -157,7 +156,7 @@ conditional on "looks done" or "test mode."
 |---|---|---|
 | Legal first name shows preferred name | Autofill doesn't distinguish legal/preferred | Manually correct Legal First Name |
 | Phone shows public number | docx carries whatever `resume.md` lists | Overwrite with cell from `profile.md` |
-| Company blank for consulting entry | "Freelance" doesn't survive Workday's parse on this tenant | Use "Senechal Consulting" (current default) |
+| Company blank for consulting entry | "Freelance" doesn't survive Workday's parse on this tenant | Set `$JOB_SEARCH_SELF_EMPLOYED_COMPANY` to an org-style name ("<Surname> Consulting") |
 | Job title "Consultant" | Parser drops "Independent" | Manually fix to "Independent Consultant" |
 | Save and Continue blocked, "illegal characters" error | Straight `" \ < > [ ] { }` in a free-text field | `resume_to_workday_md.py`'s `plain()` strips these now; re-render if editing by hand |
 | Skills type-ahead returns "No Items." for everything | Tenant's skill-cloud lookup may be non-functional (seen on Early Warning) | Try 2-3 terms, then leave blank — don't loop |
