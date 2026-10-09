@@ -3,7 +3,8 @@
 
 Reads `strategy/watchlist.csv` in the jobs repo (company, ats, slug, reason,
 contact), lists open jobs on each company's public Greenhouse/Ashby/Lever
-board, filters to the user's role families and US-remote/Bay-Area geography, and
+board, filters to the user's role families and US-remote/local geography (profile.md
+"Local areas"), and
 reports postings that are not already in `tracker.csv` (any stage, including
 archived rows) and not already reported via `data/watchlist-seen.json`.
 
@@ -119,13 +120,16 @@ def title_matches(title):
         return True
     return False
 
-# US-remote or SF Bay Area only (strategy/leadership-search.md hard filter).
-BAY_AREA_RE = re.compile(
-    r"san francisco|bay area|oakland|berkeley|san jose|fremont|"
-    r"redwood city|palo alto|mountain view|sunnyvale|santa clara|"
-    r"menlo park|south san francisco|novato|san rafael|marin",
-    re.IGNORECASE,
-)
+# US-remote, or a place in the user's commuting area. The area is personal, so it comes from the
+# "Local areas" row of profile.md (comma-separated place names, matched case-insensitively as
+# substrings of the ATS location). Unset means remote-only.
+def local_area_re():
+    areas = [a.strip() for a in (jobsearch_paths.profile_field("Local areas") or "").split(",")]
+    areas = [re.escape(a) for a in areas if a]
+    return re.compile("|".join(areas), re.IGNORECASE) if areas else None
+
+
+LOCAL_AREA_RE = None  # set in main() from profile.md
 US_REMOTE_RE = re.compile(
     r"remote.*(united states|u\.s\.|usa|\bus\b)|"
     r"(united states|u\.s\.|usa)[\s,-]*remote|"
@@ -159,7 +163,7 @@ def normalize_title(title):
 def location_ok(location):
     if not location:
         return False
-    if BAY_AREA_RE.search(location):
+    if LOCAL_AREA_RE and LOCAL_AREA_RE.search(location):
         return True
     if US_REMOTE_RE.search(location):
         return True
@@ -317,6 +321,11 @@ def main():
         help="print matches without updating the seen-state file",
     )
     args = ap.parse_args()
+
+    global LOCAL_AREA_RE
+    LOCAL_AREA_RE = local_area_re()
+    if LOCAL_AREA_RE is None:
+        print('# no "Local areas" row in profile.md: matching US-remote roles only', file=sys.stderr)
 
     # Defaults resolve against the jobs repo; explicit paths are taken as given.
     def resolve(p, default):

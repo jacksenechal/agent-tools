@@ -1,7 +1,7 @@
 # Application Tracks
 
-Not every application deserves the same spend. The evidence is in the repo: the County CIO
-letter took six revision passes, while Sonic and SVH went out as first drafts with none.
+Not every application deserves the same spend. The evidence is in the repo: one letter
+took six revision passes, while two others went out as first drafts with none.
 Averaging that spend across everything is what makes a day produce one application instead
 of several.
 
@@ -42,7 +42,7 @@ either sends it deep:
 
 - **Position formation** — must the user hold and state a genuine specific view (on the company's
   mission, technical philosophy, published work), not describe experience? This was the dominant
-  cost in maintainx and Anthropic; it is irreducibly theirs.
+  cost in the calibration set; it is irreducibly theirs.
 - **Pre-application homework** — does writing credibly require the user to read and synthesize their
   material first (published research, a product deep-dive, a regulatory landscape)? High in seven
   of the nine. Detectable at add time from the posting and the size of `company-research.md`, so
@@ -51,7 +51,7 @@ either sends it deep:
 **Two more are real but mostly mechanical.** They push toward deep but rarely decide it alone:
 
 - **Archetype distance** — no close `role/` archetype, so the resume needs re-framing not
-  tailoring (Clover: food/SAP; Skywalker: pure IC against leadership archetypes).
+  tailoring (e.g. an unfamiliar industry stack, or a pure IC role against leadership archetypes).
 - **Process complexity** — gated ATS, guessed-blind screening questions, panel scoring, a named
   deadline, a recruiter intermediary.
 
@@ -65,20 +65,20 @@ is cheap; a deep one they did not need cost hours before they saw it.
 
 ### Do not use revision count as a cost signal
 
-The calibration killed it. Revision count is not weak, it is **inverted**: Skywalker and Early
-Warning are high-cost applications (high homework, high position, resume re-framing) that have
+The calibration killed it. Revision count is not weak, it is **inverted**: two of the
+highest-cost applications (high homework, high position, resume re-framing) that have
 exactly one revision each, because the expensive judgment landed in the first draft or upstream
-in research and never showed as churn. Meanwhile Anthropic's 13 revisions were mostly one-page
+in research and never showed as churn. Meanwhile the most-revised letter's 13 revisions were mostly one-page
 compression and argument tightening, much of it agent-work. Cost is front-loaded into the first
 pass; the diff cannot see it. Score the dimensions from the posting and research, never from how
 many times a letter was touched.
 
 ### Factual churn is not a track cost
 
-Five of the nine letters spent their largest revision bucket on one thing: the user's own Kantata
-story getting cross-wired (the M-Bridge vs DevOps migrations). That is not a property of any
+Five of the nine letters spent their largest revision bucket on one thing: the user's own career
+story getting cross-wired (two similar projects at one employer conflated). That is not a property of any
 target company and does not belong in the track rating. It is a `facts.md` problem, now fixed by
-the "two teams, four migrations" wire diagram there. If a row's cost looks high only because of
+a disambiguating note there. If a row's cost looks high only because of
 own-narrative churn, that is a signal to fix `facts.md`, not to route deep.
 
 ## What each track runs

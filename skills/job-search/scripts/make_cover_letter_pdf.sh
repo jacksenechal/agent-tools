@@ -6,13 +6,13 @@
 #   make_cover_letter_pdf.sh <input.md> [output.pdf] [--name "..."] [--subtitle "..."]
 #
 # This script is general-purpose and contains NO personal details. The applicant name must be
-# supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var (source it
-# from your private profile, e.g. profile.md in your jobs repo). The script errors if no name is
+# supplied by the caller, via --name, $JOB_SEARCH_APPLICANT_NAME, or the "Full name" row of the
+# user's profile.md in the jobs repo (read automatically). The script errors if no name is
 # given.
 #
 # Defaults:
 #   output.pdf  -> same dir/basename as input, with .pdf extension
-#   --name      -> $JOB_SEARCH_APPLICANT_NAME (required if the flag is omitted)
+#   --name      -> $JOB_SEARCH_APPLICANT_NAME, then profile.md "Full name"
 #   --subtitle  -> "" (letterhead tagline omitted if empty). Use a middle dot "·" as a
 #                  separator, NOT a dash, if your house style forbids em/en dashes.
 #
@@ -58,8 +58,12 @@ fi
 [[ -z "$OUTPUT" ]] && OUTPUT="${INPUT%.md}.pdf"
 
 if [[ -z "$NAME" ]]; then
-  echo "Error: applicant name required. Pass --name \"...\" or set \$JOB_SEARCH_APPLICANT_NAME" >&2
-  echo "       (source it from your private profile, e.g. profile.md in your jobs repo)." >&2
+  source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+  NAME="$(jobsearch_profile_field "Full name")"
+fi
+if [[ -z "$NAME" ]]; then
+  echo "Error: applicant name required. Pass --name \"...\", set \$JOB_SEARCH_APPLICANT_NAME," >&2
+  echo "       or add a \"| Full name | ... |\" row to profile.md in your jobs repo." >&2
   exit 1
 fi
 

@@ -43,10 +43,8 @@ Transform rules (see make_resume_workday.sh / job-search skill docs for the brie
     keeping it as a separate, un-styled line satisfies "fold into the description" without
     touching bullet content.
   - One company with multiple roles is only split into separate job entries when the source
-    gives each role its own date range. The jobs repo's Kantata entry packs both roles
-    ("Internal Infrastructure Platform" / "M-Bridge Integration Platform") as bullets under one
-    shared Apr 2017 - Dec 2023 range with no per-role dates, so this script keeps it as one job
-    entry (the wrapper script notes this explicitly rather than inventing split dates).
+    gives each role its own date range. An entry that packs several roles as bullets under
+    one shared date range, with no per-role dates, stays one job entry here (the wrapper script notes this explicitly rather than inventing split dates).
   - All bold/italic/link markdown is stripped to plain text. A markdown link's visible text is
     kept (e.g. "[github.com/x](https://...)" -> "github.com/x"); the destination URL is dropped
     since the visible text already reads as a URL. Em dashes and en dashes become plain hyphens.
@@ -73,15 +71,15 @@ chosen purely for parser behavior is fine even if it wouldn't be on the real ré
   - The Independent Consultant entry's forced Company (see the "Self-employed" rule further
     below) should be an actual org name (e.g. "<Surname> Consulting") rather than a status word
     like "Self-employed", so the parser reads it as a company. It comes from
-    $JOB_SEARCH_SELF_EMPLOYED_COMPANY (set it from the user's private profile); without it the
-    fallback is "Self-employed". The title stays "Independent Consultant". "Freelance" was also
+    the "Consulting company" row of the user's profile.md (or $JOB_SEARCH_SELF_EMPLOYED_COMPANY);
+    without either the fallback is "Self-employed". The title stays "Independent Consultant". "Freelance" was also
     tried (2026-10-05): a live Workday "Autofill with Resume" test against this script's docx
     output came back with the Company field blank for it, while an "<X> Consulting" org name was
     confirmed working. Test any other value on a live tenant before relying on it.
-  - The Education entry's school name "University of North Carolina at Asheville" is rendered as
-    "University of North Carolina Asheville" (no "at"): Workday's School field didn't match the
-    "at Asheville" form against its lookup. See SCHOOL_NAME_OVERRIDES — narrow, exact-match
-    substitution, not a general "at" stripper.
+  - A school's formal name of the form "University of X at Y" can miss Workday's School lookup,
+    which matched only "University of X Y" (no "at"). The fix is a narrow, exact-match
+    substitution supplied by the user's profile.md ("Workday school names"; see
+    school_name_overrides), not a general "at" stripper.
 
 Rules learned from a live Workday "Autofill with Resume" test against the docx this script
 produces (2026-10-05), since the parser only has four fields to assign per entry (Title,
@@ -96,7 +94,7 @@ Company, Location, Dates) and no concept of a non-job section:
     "Consultant" as the title and "AI-Native Software Delivery" as the company.
   - Narrow rule: when the (pre-strip) title contains "Independent" or "Consultant" (case
     insensitive), the Company field is forced to a fixed value (see the third-test note above for
-    $JOB_SEARCH_SELF_EMPLOYED_COMPANY) regardless of what the source's
+    profile.md "Consulting company") regardless of what the source's
     "#### Company | Dates | Location" line says. This exists specifically for the
     "Independent Consultant" entry, whose source company text ("Client engagements") is a
     descriptive phrase, not an org name, and Workday parsed it as a second title/company pair.
@@ -113,14 +111,14 @@ Company, Location, Dates) and no concept of a non-job section:
     actually lost to the reader — see make_resume_workday.sh's header and the job-search skill's
     step 6a for the replace-the-attachment step this depends on.
 
-Bug fix learned from a live Workday "Autofill with Resume" test against the Salesforce Senior
-Engineering Manager, Observability docx (2026-10-05): Workday's parser has no Summary field, so
+Bug fix learned from a live Workday "Autofill with Resume" test against a
+tailored docx (2026-10-05): Workday's parser has no Summary field, so
 it dumped the Summary section's text into the first job entry's Role Description instead. The
 Summary section is now DROPPED from the Workday render by default (removed from KEPT_SECTIONS).
 Pass --keep-summary to restore the old behavior (emit it as its own "# Summary" block) for a
 tenant where that turns out to behave differently; test before relying on it.
 
-Findings from manual autofill testing on the Salesforce docx (2026-10-05): Workday's Websites
+Findings from manual autofill testing on a tailored docx (2026-10-05): Workday's Websites
 extractor reads hyperlink *targets* in the uploaded docx, and the per-job docx had none (every
 markdown link was stripped to its plain visible text). Also the docx carried the Google Voice
 number, which then has to be manually overwritten with the cell on every application. Three
@@ -148,6 +146,8 @@ import os
 import re
 import sys
 
+import jobsearch_paths
+
 MONTHS = {
     "Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April",
     "May": "May", "Jun": "June", "Jul": "July", "Aug": "August",
@@ -169,7 +169,7 @@ def plain(text):
     text = text.replace("—", "-").replace("–", "-")  # em/en dash -> hyphen
     # Workday's Role Description (and likely other free-text) fields reject these characters
     # outright ("Contains illegal characters < > [ ] " { } \"), confirmed by a live "Save and
-    # Continue" validation error on the Early Warning tenant (2026-10-05). Smart/curly quotes
+    # Continue" validation error on one tenant (2026-10-05). Smart/curly quotes
     # pass; it is specifically straight " and the bracket/brace/backslash set. Drop straight
     # double quotes and backslashes; bare < > [ ] { } shouldn't appear in prose bullets but are
     # stripped too so a stray one never silently blocks Save and Continue downstream.
@@ -266,16 +266,30 @@ KEPT_SECTIONS_BASE = ("Experience", "Education", "Skills")
 
 TITLE_SUBTITLE_RE = re.compile(r"\s*·\s*.*$")
 SELF_EMPLOYED_TITLE_RE = re.compile(r"\bindependent\b|\bconsultant\b", re.IGNORECASE)
-# A personal value, so it is supplied at run time (see module docstring), never hard-coded here.
-SELF_EMPLOYED_COMPANY = os.environ.get("JOB_SEARCH_SELF_EMPLOYED_COMPANY") or "Self-employed"
+
+
+def self_employed_company():
+    """The org name forced onto an Independent/Consultant entry. A personal value, so it comes
+    from the user's profile.md "Consulting company" row (or $JOB_SEARCH_SELF_EMPLOYED_COMPANY),
+    never from this skill; "Self-employed" if neither is set. See module docstring."""
+    return (os.environ.get("JOB_SEARCH_SELF_EMPLOYED_COMPANY")
+            or jobsearch_paths.profile_field("Consulting company")
+            or "Self-employed")
 SCOPE_LABEL_RE = re.compile(r"^Scope:\s*", re.IGNORECASE)
 
-# Narrow, exact-match school-name overrides learned from a live Workday parser test (see module
-# docstring): Workday's School field didn't match "University of North Carolina at Asheville"
-# against its lookup, so it's rendered without "at". Not a general "at"-stripping rule.
-SCHOOL_NAME_OVERRIDES = {
-    "University of North Carolina at Asheville": "University of North Carolina Asheville",
-}
+
+
+def school_name_overrides():
+    """Narrow, exact-match school-name overrides for Workday's School lookup, which can miss a
+    school's formal name (e.g. "University of X at Y" matched only as "University of X Y").
+    The schools are the user's, so the pairs come from profile.md's "Workday school names" row:
+    `Source name => Workday name`, several separated by `;`. Not a general rewriting rule."""
+    pairs = {}
+    for item in (jobsearch_paths.profile_field("Workday school names") or "").split(";"):
+        src, sep, dst = item.partition("=>")
+        if sep and src.strip() and dst.strip():
+            pairs[src.strip()] = dst.strip()
+    return pairs
 
 DEGREE_EXPANSIONS = {
     "BA": "Bachelor of Arts",
@@ -472,7 +486,7 @@ def process_job_entries(b, lines, is_education, edu_start=None):
         if is_education:
             if len(parts) >= 1 and parts[0]:
                 school = plain(parts[0])
-                school = SCHOOL_NAME_OVERRIDES.get(school, school)
+                school = school_name_overrides().get(school, school)
                 b.emit(school)
             if len(parts) >= 2 and parts[1]:
                 date = normalize_date(parts[1])
@@ -489,7 +503,7 @@ def process_job_entries(b, lines, is_education, edu_start=None):
                 # Narrow rule: an "Independent"/"Consultant" title's source company text is a
                 # descriptive phrase (e.g. "Client engagements"), not an org name, and Workday
                 # parsed it as a second title/company pair. See module docstring.
-                company = SELF_EMPLOYED_COMPANY
+                company = self_employed_company()
             if company:
                 b.emit(company)
             if location and not is_remote_location(location):

@@ -68,6 +68,21 @@ The scripts resolve these themselves through `scripts/paths.sh` (bash) and
 the jobs repo. When you need a value for a command of your own, get it the same way:
 `source <skill-dir>/scripts/paths.sh && echo "$JOBS_DIR $RESUME_DIR $SITE_DIR"`.
 
+**This skill is user-agnostic; the jobs repo is the user.** Everything unique to one person
+(name, contact details, history, facts, voice, preferences, form answers, org names) lives in
+their jobs repo: `profile.md` for form-level values, `strategy/` for the rest. Scripts read it
+from there at run time, so the skill can be shared as is. Never write a personal value into this
+skill, even as a default or an example; use a placeholder and, if a script needs the value, a
+`profile.md` field. Fields the scripts read today (rows of the `| Field | Value |` table, via
+`jobsearch_profile_field` in `paths.sh` / `profile_field` in `jobsearch_paths.py`):
+
+| `profile.md` field | Used by |
+|---|---|
+| `Full name` | `make_resume_pdf.sh`, `make_cover_letter_pdf.sh`, `make_resume_workday.sh` (when `--name` is not given) |
+| `Consulting company` | `resume_to_workday_md.py`: org name for an Independent/Consultant entry on the Workday docx |
+| `Workday school names` | `resume_to_workday_md.py`: `Source name => Workday name` pairs (`;`-separated) for schools Workday's lookup misses |
+| `Local areas` | `watch_companies.py`: comma-separated places that count as commutable, besides US-remote; unset means remote-only |
+
 **Do not reintroduce hard-coded paths** (a fixed workspace directory under the home folder, a
 specific user's home directory, or any other assumed layout) anywhere in this skill: not in
 docs, scripts, assets, examples, or comments. Use the names above, and add new locations to
@@ -384,8 +399,8 @@ resume-repo branch. The `role/*` archetypes are read-only starting points.
    ```
    The output file is always named `Resume - <Name> - <Role>.pdf` (e.g. `Resume - <Your Name> -
    IT Director - AI.pdf`): the user wants the file name to read well for the recruiter who
-   downloads it. Never a bare `resume.pdf`. `--name` is required (flag or `$JOB_SEARCH_APPLICANT_NAME`
-   from `profile.md`); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
+   downloads it. Never a bare `resume.pdf`. The name comes from `--name`, `$JOB_SEARCH_APPLICANT_NAME`, or
+   `profile.md`'s "Full name" row (read automatically); add `--source-url "<public résumé URL>"` to reproduce the "latest version at"
    print footer. Re-render after every content edit. Do NOT run the resume repo's `_publish`.
 6. `xdg-open "$JOBS_DIR/applications/<id>/Resume - <Name> - <Role>.pdf"` to eyeball it.
 6a. **If the application portal is Workday** (the "Autofill with Resume" step), the styled PDF
@@ -579,8 +594,9 @@ template script — do NOT hand-roll pandoc/Chrome styling each time:
 ```
 The script gives true 1in side / 0.5in top-bottom margins and roomy line spacing (it overrides
 pandoc's default `max-width`/padding, which otherwise reads as ~2in margins). Use a middle dot
-`·` (not a dash) in `--subtitle` to match the tailored resume title. `--name` is required (flag
-or `$JOB_SEARCH_APPLICANT_NAME`); the script bakes in no personal default.
+`·` (not a dash) in `--subtitle` to match the tailored resume title. The name comes from `--name`,
+`$JOB_SEARCH_APPLICANT_NAME`, or `profile.md`'s "Full name" row; the script bakes in no personal
+default.
 
 **Stage 5: Finalize & Push**
 
@@ -891,7 +907,7 @@ whose letter has no `applications/<id>/fact-check.md` yet (i.e. never gated).
 
 Per application:
 1. Run the gate exactly as Stage 4 does: fact check (`sonnet` subagent, read-only, against the
-   current `strategy/facts.md` including its guardrails and the Kantata wire diagram) → reconcile
+   current `strategy/facts.md` including its guardrails) → reconcile
    on the main thread → `no-ai-slop` Edit pass → `scripts/check_claims.sh <file>` must exit clean.
 2. Append the verdict table to `applications/<id>/fact-check.md` under a dated heading. Its
    presence is what marks the letter gated, so `--all-unsent` skips it next time.

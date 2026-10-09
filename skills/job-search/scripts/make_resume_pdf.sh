@@ -1,21 +1,21 @@
 #!/bin/bash
 #
 # make_resume_pdf.sh — render a résumé markdown file to a styled PDF that matches the
-# canonical résumé look (jacksenechal.com/resume house style).
+# canonical résumé look (the resume repo's house style).
 #
 # Usage:
 #   make_resume_pdf.sh <input.md> [output.pdf] [--name "..."] [--source-url "..."]
 #
 # This script is general-purpose and contains NO personal details. The applicant name must
-# be supplied by the caller, either via --name or the $JOB_SEARCH_APPLICANT_NAME env var
-# (source it from your private profile, e.g. profile.md in your jobs repo). The script errors
+# be supplied by the caller, via --name, $JOB_SEARCH_APPLICANT_NAME, or the "Full name" row of the
+# user's profile.md in the jobs repo (read automatically). The script errors
 # if no name is given. The name is used ONLY for the HTML page title (document metadata); the
 # visible name/title on the page comes from the résumé markdown's own leading H1, exactly as
 # in the canonical résumé.
 #
 # Defaults:
 #   output.pdf   -> same dir/basename as input, with .pdf extension
-#   --name       -> $JOB_SEARCH_APPLICANT_NAME (required if the flag is omitted)
+#   --name       -> $JOB_SEARCH_APPLICANT_NAME, then profile.md "Full name"
 #   --source-url -> "" (the print-footer "latest version at <url>" line is omitted if empty;
 #                   supply your public résumé URL to reproduce the canonical footer). No dash
 #                   in your value if your house style forbids em/en dashes.
@@ -60,8 +60,12 @@ fi
 [[ -z "$OUTPUT" ]] && OUTPUT="${INPUT%.md}.pdf"
 
 if [[ -z "$NAME" ]]; then
-  echo "Error: applicant name required. Pass --name \"...\" or set \$JOB_SEARCH_APPLICANT_NAME" >&2
-  echo "       (source it from your private profile, e.g. profile.md in your jobs repo)." >&2
+  source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+  NAME="$(jobsearch_profile_field "Full name")"
+fi
+if [[ -z "$NAME" ]]; then
+  echo "Error: applicant name required. Pass --name \"...\", set \$JOB_SEARCH_APPLICANT_NAME," >&2
+  echo "       or add a \"| Full name | ... |\" row to profile.md in your jobs repo." >&2
   exit 1
 fi
 

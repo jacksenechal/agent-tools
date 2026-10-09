@@ -39,8 +39,8 @@ Facts settle first, prose second, machine check last.
    Catches drift the slop pass introduced and banned strings anywhere in the corpus.
 6. **Render / present.** PDF, or a paste-ready block for the user.
 
-Why facts before polish: the County CIO letter took six revision passes, and the two
-factual corrections (wrong Kantata title, inflated platform scope) landed *after* four
+Why facts before polish: one calibration letter took six revision passes, and the two
+factual corrections (a wrong job title, inflated platform scope) landed *after* four
 tone and length passes. Every editorial pass spent on a sentence that later has to change
 its claim is wasted, and a polished sentence is harder to notice as wrong.
 
@@ -125,8 +125,8 @@ summary of the letter, no rewrite.
 
 Run these every time, independent of what the draft says:
 
-- Every employer title verbatim against `resume.md`. Kantata is **Principal Engineer +
-  Engineering Manager**, never Director.
+- Every employer title verbatim against `resume.md`, never upgraded (e.g. a manager title
+  becoming "Director"). `facts.md` guardrails name the titles that drift.
 - Every number in the draft appears in the corpus with the same units and the same
   referent. A number that measures a different thing than the source measures is
   `OVERSTATED`, not `SUPPORTED`.
