@@ -1,7 +1,0 @@
-[Unit]
-Description=Job search pipeline: weekly North Bay (Marin/Sonoma) leadership re-scout
-
-[Service]
-Type=oneshot
-ExecStart=@SKILL_DIR@/scripts/orchestrator.sh northbay
-TimeoutStartSec=7200
