@@ -16,9 +16,8 @@ must contain **no personally identifiable information (PII)** and no user-specif
 - In docs and examples, use placeholders (`<Your Name>`, `<Company>`, `<Role>`) rather than real
   values.
 
-**Where personal details live:** the user's private repos (for the job-search skill, that's the
-jobs repo, `$JOBS_DIR`, including `profile.md`). Read from there at runtime; never copy into
-this repo.
+**Where personal details live:** the user's private repos. Read from there at runtime; never
+copy into this repo.
 
 If you catch existing PII in this repo, treat it as a bug and remove/genericize it.
 
@@ -37,10 +36,9 @@ Resolve locations at run time instead:
   `os.path.dirname(__file__)`). In docs, write `<skill-dir>/...` and say it means the skill's
   base directory.
 - **The user's repos and data**: an environment variable, then a config file under
-  `${XDG_CONFIG_HOME:-~/.config}/<skill>/`, then discovery from the current directory. For
-  job-search that is `skills/job-search/scripts/paths.sh` (`jobsearch_paths.py` for Python),
-  documented in its SKILL.md under "Project Locations"; extend it rather than adding a path
-  inline. In docs, write `$JOBS_DIR`, `$RESUME_DIR`, `$SITE_DIR`.
+  `${XDG_CONFIG_HOME:-~/.config}/<skill>/`, then discovery from the current directory. Keep
+  that resolution in one helper per skill and extend it rather than adding a path inline. In
+  docs, write a named variable (e.g. `$RESUME_REPO_PATH`), never a literal path.
 - **Installed artifacts** (systemd units and the like): templates with placeholders the
   installer fills in, e.g. `@SKILL_DIR@`.
 
