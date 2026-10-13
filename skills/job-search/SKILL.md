@@ -648,6 +648,8 @@ The steward session owns it (sync-publish cron; see `ops/steward/charter.md` and
     public Greenhouse/Ashby/Lever board, filters to Jack's role families and US-remote/Bay
     Area geography, and prints `NEW`, `MOVED <id>`, `REOPENED <id>`, and `PRIOR <stage> <id>`
     rows (never edits the tracker itself — see the script's docstring for the matching order).
+    The script rewrites `data/watchlist-seen.json`: stage it in the run's commit, or the next
+    run re-reports the same postings.
     For each line:
     - `NEW` → run `add` on it exactly as a saved-list find (Stage 1 onward). `reason=held` or
       `first-degree` routes the row to the `personal` lane at `add` (`strategy/auto-apply.md`,
