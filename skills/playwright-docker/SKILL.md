@@ -63,14 +63,11 @@ Before any sub-command, ensure the submodule is initialized and the image exists
 **All `docker compose` commands require `RESUME_REPO_PATH` and `JOBS_REPO_PATH`** (the
 compose file mounts both repos as volumes: the résumé repo for the canonical résumé, the jobs
 repo for per-job tailored résumés at `applications/<id>/`). Set them before every docker compose
-invocation. With the `job-search` skill installed, its path resolver gives both:
+invocation, as the two repos' absolute paths:
 
 ```bash
-source <job-search-skill-dir>/scripts/paths.sh
-export RESUME_REPO_PATH="$RESUME_DIR" JOBS_REPO_PATH="$JOBS_DIR"
+export RESUME_REPO_PATH=/path/to/resume-repo JOBS_REPO_PATH=/path/to/jobs-repo
 ```
-
-Otherwise export them to the two repos' absolute paths directly.
 
 ```bash
 # Initialize submodule (no-op if already present)
