@@ -42,8 +42,7 @@ git config core.hooksPath .githooks
 
 ## How this is built
 
-The code and docs are written with AI assistance. Changes go through pull requests and are
-reviewed before they merge, and they are held to the standards in `AGENTS.md`.
+The code and docs are written with AI assistance and held to the standards in `AGENTS.md`.
 
 ## License
 
