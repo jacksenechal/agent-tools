@@ -1,2 +1,3 @@
 *.skill
 **/__pycache__
+skills/playwright-docker/assets/docker-compose.override.yml

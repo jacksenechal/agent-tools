@@ -6,8 +6,9 @@ Fill in every `[bracketed]` field with evidence gathered from the codebase.
 ```
 DEFINITIONS:
 D1: Two patches are EQUIVALENT MODULO TESTS iff executing the
-    existing repository test suite produces identical pass/fail
-    outcomes for both patches.
+    existing repository test suite would produce identical pass/fail
+    outcomes for both patches (established by tracing, not by
+    running the tests).
 D2: The relevant tests are ONLY those in FAIL_TO_PASS and
     PASS_TO_PASS (the existing test suite in the repository).
 

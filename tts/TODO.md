@@ -1,60 +1,48 @@
-# TTS thread — state & next steps
-
-_Last updated 2026-06-16, before a reboot._
+# TTS: state and next steps
 
 ## Where we are
 
-Local TTS for agent responses is **working** in cold-CLI mode:
+Local TTS for agent responses works in cold-CLI mode:
 
-- Engine: `kokoro-tts` CLI (nazdridoy/kokoro-tts, via `uv tool`); model+voices in
-  `~/.local/share/kokoro/`.
-- Core: `tts/agent-speak` — harness-agnostic; strips markdown, ducks other apps
-  via PipeWire/`pactl`, one utterance at a time. Resolves `kokoro-tts` by
-  absolute path (don't rely on PATH — hooks get a minimal PATH).
-- Claude Code: `tts/hooks/claude-stop-tts.sh` wired as a `Stop` hook in
-  `~/.claude/settings.json`. Logs each firing to
+- Engine: `kokoro-tts` CLI (nazdridoy/kokoro-tts, via `uv tool`); model and voices in
+  `$KOKORO_HOME` (default `~/.local/share/kokoro/`).
+- Core: `agent-speak`, harness-agnostic; strips markdown, ducks other apps via
+  PipeWire/`pactl`, one utterance at a time. Resolves `kokoro-tts` by absolute path
+  (don't rely on PATH: hooks get a minimal PATH).
+- Claude Code: `hooks/claude-stop-tts.sh` wired as a `Stop` hook. Logs each firing to
   `~/.local/state/agent-speak/hook.log`.
 - Runtime toggle: `tts on|off|toggle|status|say TEXT` (mute flag at
   `~/.local/state/agent-speak/muted`). From a Claude Code prompt use `!tts off`.
-- Deployed paths are symlinks into this repo:
-  `~/.local/bin/agent-speak`, `~/.local/bin/tts`, `~/.claude/hooks/tts-speak.sh`.
-
-Repo `tts/` is **not committed yet** (decide whether to commit).
 
 ## The open problem
 
-Every utterance cold-loads the model + imports → ~5-7s before audio, even for
-"hi". Synthesis itself is <0.5s. Fix = a **warm persistent server**.
+Every utterance cold-loads the model and its imports, roughly 5 to 7 s before audio,
+even for "hi". Synthesis itself is under 0.5 s. The fix is a warm persistent server.
 
 ## Decision made
 
-Use an existing server (don't build/maintain our own):
-**remsky/Kokoro-FastAPI** (~5k★, maintained, OpenAI-compatible
-`/v1/audio/speech`, streaming, CPU images, port 8880). Deploy via **Docker**,
-`--restart=always`, named volume for the model. Bonus: hermes can point its
-native OpenAI TTS backend at the same `http://localhost:8880/v1`.
+Use an existing server rather than building and maintaining one:
+[`remsky/Kokoro-FastAPI`](https://github.com/remsky/Kokoro-FastAPI) (maintained,
+OpenAI-compatible `/v1/audio/speech`, streaming, CPU images, port 8880). Deploy it with
+Docker, `--restart=always`, and a named volume for the model. Bonus: any harness with an
+OpenAI-compatible TTS backend can point at the same `http://localhost:8880/v1`.
 
-Blocker: disk was at 98% (11-14 GB free); PyTorch image is multi-GB.
+The PyTorch image is several GB; check free disk space first.
 
-## NEXT STEPS
+## Next steps
 
-1. ~~**Free disk**~~ ✅ DONE (2026-06-16). Now **54 GB free** (was ~11). User
-   installed pacman PostTransaction hook `/etc/pacman.d/hooks/clean_cache.hook`
-   (`paccache -rk3` on every transaction) and ran a one-time cleanup. The weekly
-   `paccache.timer` is therefore optional (hook already covers ongoing cleanup);
-   still `disabled`. Further reclaimable if ever needed: docker (~7.6 GB),
-   `uv cache prune` (~5.9 GB).
-2. **Deploy the warm server:** `docker run -d --restart=always -p 8880:8880`
-   remsky CPU image; verify `curl localhost:8880/v1/audio/speech`.
-3. **Rewrite `agent-speak`** into a thin client: POST to localhost:8880
-   (streaming) → pipe audio to player with existing ducking; **fall back to the
-   cold `kokoro-tts` CLI if the server is down**.
-4. **hermes:** point its OpenAI TTS backend base_url at `http://localhost:8880/v1`,
-   set a kokoro voice, `voice.auto_tts: true`.
-5. Decide: commit `tts/`; optionally fold install + server into the dotfiles
-   `claude_skills` Ansible role for cross-machine portability.
+1. **Deploy the warm server:** `docker run -d --restart=always -p 127.0.0.1:8880:8880`
+   with the CPU image; verify with `curl localhost:8880/v1/audio/speech`.
+2. **Rewrite `agent-speak` as a thin client:** POST to localhost:8880 (streaming), pipe
+   audio to the player through the existing ducking, and fall back to the cold
+   `kokoro-tts` CLI when the server is down.
+3. **Other harnesses:** point their OpenAI TTS backend's base URL at
+   `http://localhost:8880/v1` and set a Kokoro voice.
+4. **Install:** have `install.sh` set up the server too, so a new machine gets the warm
+   path in one step.
 
-## Verify after reboot
+## Verify after changes
 
-- Stop hook still fires: open a session, then `cat ~/.local/state/agent-speak/hook.log`.
+- The Stop hook still fires: open a session, then check
+  `~/.local/state/agent-speak/hook.log`.
 - `tts say "hi"` still works (cold path).

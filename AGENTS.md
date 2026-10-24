@@ -11,7 +11,7 @@ must contain **no personally identifiable information (PII)** and no user-specif
   personal facts — not in SKILL.md files, not in scripts, not in assets, not in comments or
   example commands.
 - Scripts must take personal values at runtime: a flag (e.g. `--name`), an environment variable
-  (e.g. `$JOB_SEARCH_APPLICANT_NAME`), or by reading a file in the user's **private** repo. Do
+  (e.g. `$MY_SKILL_USER_NAME`), or by reading a file in the user's **private** repo. Do
   not hardcode a default that embeds a real person.
 - In docs and examples, use placeholders (`<Your Name>`, `<Company>`, `<Role>`) rather than real
   values.
@@ -38,7 +38,7 @@ Resolve locations at run time instead:
 - **The user's repos and data**: an environment variable, then a config file under
   `${XDG_CONFIG_HOME:-~/.config}/<skill>/`, then discovery from the current directory. Keep
   that resolution in one helper per skill and extend it rather than adding a path inline. In
-  docs, write a named variable (e.g. `$RESUME_REPO_PATH`), never a literal path.
+  docs, write a named variable (e.g. `$NOTES_REPO_PATH`), never a literal path.
 - **Installed artifacts** (systemd units and the like): templates with placeholders the
   installer fills in, e.g. `@SKILL_DIR@`.
 

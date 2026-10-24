@@ -1,0 +1,69 @@
+# Repo checks. The weekly run catches what changes without a commit: new advisories against
+# repo-scout's CDN pins, or a CDN serving different bytes.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  standards:
+    name: AGENTS.md standards
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: No hard-coded paths
+        run: scripts/check_no_hardcoded_paths.sh
+      - name: Path guard fixtures
+        run: scripts/test_check_no_hardcoded_paths.sh
+      - name: Skill metadata and relative links
+        run: python3 scripts/check_skills.py
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        run: git ls-files -z '*.sh' .githooks/pre-commit ':!archive' | xargs -0 shellcheck
+      - name: ruff
+        run: |
+          pip install --quiet ruff==0.16.10
+          ruff check --no-cache scripts skills tts/agent-speak
+
+  playwright-compose:
+    name: playwright-docker compose config
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: skills/playwright-docker/assets
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker compose -f docker-compose.yml config --quiet
+      - run: docker compose -f docker-compose.yml -f docker-compose.override.example.yml config --quiet
+
+  repo-scout:
+    name: repo-scout renderer
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: CDN pins match the npm registry, no advisories
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 skills/repo-scout/scripts/verify_cdn_pins.py
+      - name: Hostile report renders safely
+        run: skills/repo-scout/tests/test_render_html.sh

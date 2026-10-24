@@ -1,15 +1,15 @@
 # agent-speak — local TTS for agent harnesses
 
 Speak agent responses aloud using a **local** TTS engine (Kokoro), with
-**PipeWire audio ducking**, that works across **multiple agent harnesses**
-(Claude Code, pi, hermes) from one small, harness-agnostic core.
+**PipeWire audio ducking**, built as one small, harness-agnostic core with a
+thin adapter per agent harness (a Claude Code adapter ships here).
 
 No cloud, no API keys, no per-character billing.
 
 ## Why this design (vs. the off-the-shelf repos)
 
 The popular `*/claude-code-tts` projects each hard-wire themselves to Claude
-Code's hook system, so none help with pi or hermes; two default to cloud TTS
+Code's hook system, so none help with other harnesses; two default to cloud TTS
 (OpenAI / Edge), and their audio ducking is macOS-only or absent. They're also
 low-star, single-maintainer repos.
 
@@ -26,10 +26,11 @@ adapter that pipes text into it.
 |------|------|
 | `agent-speak` | Harness-agnostic core: stdin → strip markdown → duck other audio → Kokoro stream. One utterance at a time (new call interrupts the old). |
 | `hooks/claude-stop-tts.sh` | Claude Code adapter (Stop hook): reads the transcript, extracts the last assistant text turn, pipes it to `agent-speak`. |
-| `install.sh` | Installs the engine + model, symlinks the core and hook. |
+| `tts` | Runtime on/off toggle (see below). |
+| `install.sh` | Installs the engine + model, symlinks the core, `tts`, and the hook. |
 
 Deployed locations (symlinks back to this repo, so edits here are live):
-`~/.local/bin/agent-speak`, `~/.claude/hooks/tts-speak.sh`.
+`~/.local/bin/agent-speak`, `~/.local/bin/tts`, `~/.claude/hooks/tts-speak.sh`.
 
 ## Install (new machine)
 
@@ -95,33 +96,32 @@ Wired via `~/.claude/settings.json`:
 ]
 ```
 
-### pi — pipe its output
-pi is used mostly non-interactively here, so just pipe:
+### Other harnesses: pipe text in
+Any harness, or any command, can pipe text to the core:
 ```bash
-pi -p "summarize this repo" | tee /dev/tty | agent-speak
+some-agent --print "summarize this repo" | tee /dev/tty | agent-speak
 ```
-(For interactive pi, a `~/.pi/agent/extensions/` extension could call
-`agent-speak` on turn completion — pi's extension API, same place the
-`sandbox` extension lives.)
-
-### hermes — use its *native* TTS
-hermes already ships TTS (`~/.hermes/config.yaml` has `tts:` backends and a
-`voice.auto_tts` switch). Don't wrap it — enable its built-in local backend
-(e.g. `neutts` or the bundled `piper` voice) and set `voice.auto_tts: true`.
-`agent-speak` is the fallback for harnesses *without* native TTS.
+For an interactive harness, call `agent-speak` from its turn-completion hook or
+extension point. If the harness has native TTS, prefer that; `agent-speak` is
+for harnesses without it.
 
 ## Portability across machines
 
-Canonical scripts live in this repo (synced like the other owned skill repos),
-and the deployed paths are symlinks into it, so a `git pull` updates every
-machine. `install.sh` handles the per-host engine install + model download +
-symlinks. Optionally fold those steps into the dotfiles `claude_skills` Ansible
-role (mirroring `block-shai-hulud.sh`) for hands-off provisioning.
+The deployed paths are symlinks into this repo, so a `git pull` updates every
+machine. `install.sh` handles the per-host engine install, model download, and
+symlinks.
 
 ## Limitations / future
 
-- **Cold-load latency:** each utterance reloads the 311 MB ONNX model (~2–3 s).
-  Fine for end-of-turn narration. A persistent `kokoro` daemon would cut this
-  but adds complexity; not built yet.
-- CPU inference (Kokoro is 82 M params; the AMD 680M iGPU has no CUDA). Fast
-  enough in practice.
+- **Cold-load latency:** each utterance reloads the 311 MB ONNX model and its
+  imports, roughly 5 to 7 s before audio starts even for a short reply
+  (synthesis itself is under 0.5 s). Fine for end-of-turn narration.
+- **Planned fix, a warm server:** run an existing persistent Kokoro server
+  rather than building one, e.g.
+  [`remsky/Kokoro-FastAPI`](https://github.com/remsky/Kokoro-FastAPI)
+  (OpenAI-compatible `/v1/audio/speech`, streaming, CPU images) in Docker on
+  localhost. `agent-speak` would become a thin client that streams from it
+  through the existing ducking, and falls back to the cold `kokoro-tts` CLI
+  when the server is down. Not built yet; the plan is in `TODO.md`.
+- **CPU inference:** Kokoro is 82 M parameters and runs on CPU, fast enough in
+  practice.

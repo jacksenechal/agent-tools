@@ -17,6 +17,20 @@ export DISPLAY=:99
 # Fix ownership on Docker volume mountpoints (created as root by Docker)
 chown -R pwuser:pwuser /home/pwuser/golden-profile /home/pwuser/state 2>/dev/null || true
 
+# noVNC password. Use $VNC_PASSWORD if set, otherwise keep the one generated on first
+# start (VNC uses at most 8 characters). Read it with:
+#   docker exec playwright-display cat /home/pwuser/vnc/password
+VNC_DIR=/home/pwuser/vnc
+mkdir -p "$VNC_DIR"
+if [ -n "${VNC_PASSWORD:-}" ]; then
+    printf '%s' "$VNC_PASSWORD" > "$VNC_DIR/password"
+elif [ ! -s "$VNC_DIR/password" ]; then
+    tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 8 > "$VNC_DIR/password" || true
+fi
+x11vnc -storepasswd "$(cat "$VNC_DIR/password")" "$VNC_DIR/passwd" >/dev/null
+chown -R pwuser:pwuser "$VNC_DIR"
+chmod 700 "$VNC_DIR" && chmod 600 "$VNC_DIR/password" "$VNC_DIR/passwd"
+
 echo "Starting Playwright MCP with noVNC display..."
 echo "  Screen: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}x${SCREEN_DEPTH}"
 echo "  MCP Port: ${MCP_PORT}"

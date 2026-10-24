@@ -1,0 +1,8 @@
+# Copy to docker-compose.override.yml (gitignored) to let the browser upload files from the
+# host. Docker Compose merges that file into every `docker compose` command run in this
+# directory. Mount each directory read-only at its identical path inside the container; see
+# "File uploads" in SKILL.md for why the paths must match.
+services:
+  playwright-display:
+    volumes:
+      - /absolute/path/to/upload-dir:/absolute/path/to/upload-dir:ro

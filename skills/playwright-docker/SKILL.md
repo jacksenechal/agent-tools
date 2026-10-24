@@ -34,11 +34,15 @@ Two MCP servers run in the same container on different ports:
 
 **Flow**: User logs into sites via golden session (noVNC) → export storage state → isolated sessions automatically load cookies.
 
+After an export, **every isolated session is logged in everywhere the golden session is**,
+so a page an agent visits (or text injected into one) acts with all of those logins. Export
+only when agents need the logins, and run `docker compose down -v` when you are done.
+
 ### Components
 
 - **Docker container** (`playwright-display`): Runs persistent golden Chromium + two Playwright MCP servers + noVNC
 - **MCP connection**: Claude Code connects via `mcp__playwright__` tools (stdio → SSE proxy)
-- **noVNC**: http://localhost:6080/vnc.html — watch or manually interact with the browser
+- **noVNC**: http://localhost:6080/vnc.html — watch or manually interact with the browser (password protected, see below)
 - **Golden session** (port 3081): Persistent browser profile for logins
 - **Isolated sessions** (port 3080): Ephemeral browsers pre-loaded with exported auth state
 
@@ -55,19 +59,23 @@ overlay changes without modifying it:
 5. **`start-mcp-golden.sh`** — golden MCP server that connects to golden Chromium via `--cdp-endpoint`.
 6. **`export-storage-state.js`** — exports auth state from golden browser via Playwright CDP.
 7. **Custom `entrypoint.sh`** — fixes Docker volume ownership before starting supervisord.
+8. **`chrome/Dockerfile`** — layers a pinned Chrome for Testing build over the upstream image
+   (built as the `playwright-base` service). Both browsers run it, not Playwright's bundled
+   Chromium.
+9. **`playwright-config.json`** — points isolated sessions at that binary and keeps Chrome's
+   background component updates on, so they receive the certificate revocation list
+   (CRLSet). Playwright disables those updates by default, which leaves an automation
+   browser without Chrome's emergency certificate blocks.
 
 ## Prerequisites
 
 Before any sub-command, ensure the submodule is initialized and the image exists.
 
-**All `docker compose` commands require `RESUME_REPO_PATH` and `JOBS_REPO_PATH`** (the
-compose file mounts both repos as volumes: the résumé repo for the canonical résumé, the jobs
-repo for per-job tailored résumés at `applications/<id>/`). Set them before every docker compose
-invocation, as the two repos' absolute paths:
-
-```bash
-export RESUME_REPO_PATH=/path/to/resume-repo JOBS_REPO_PATH=/path/to/jobs-repo
-```
+**Optional upload directories.** The base compose file mounts no host directories. To let
+the browser upload files from the host, copy `assets/docker-compose.override.example.yml` to
+`assets/docker-compose.override.yml` (gitignored) and list the directories there. Docker
+Compose merges the override into every `docker compose` command run in `assets/`. See
+[File uploads](#file-uploads-uploading-host-files).
 
 ```bash
 # Initialize submodule (no-op if already present)
@@ -98,8 +106,17 @@ Verify it's running:
 docker ps | grep playwright-display
 ```
 
-noVNC is at http://localhost:6080/vnc.html. The golden Chromium browser starts
-automatically. Isolated browsers launch on the first MCP tool call.
+noVNC is at http://localhost:6080/vnc.html and asks for a password. The entrypoint generates
+one on first start (or uses `VNC_PASSWORD` if you set it in your override's `environment`).
+Give the user this command to read it:
+
+```bash
+docker exec playwright-display cat /home/pwuser/vnc/password
+```
+
+A generated password survives `docker compose restart` but changes when the container is
+recreated. The golden Chromium browser starts automatically. Isolated browsers launch on the
+first MCP tool call.
 
 #### 2. Add the MCP server (user-scoped, persists across all projects)
 
@@ -152,7 +169,8 @@ After logging into sites in the golden session, export cookies and localStorage:
 docker exec -e NODE_PATH=/app/node_modules playwright-display node /usr/local/bin/export-storage-state.js /home/pwuser/state/storage-state.json
 ```
 
-This writes a Playwright storage state file. The isolated MCP server loads `--storage-state`
+This writes a Playwright storage state file. It holds live session cookies in plaintext;
+`docker compose down -v` deletes it (and the golden profile) when you no longer need it. The isolated MCP server loads `--storage-state`
 at process startup, so after exporting you need to restart the container for isolated
 sessions to pick up the new auth state:
 
@@ -164,9 +182,10 @@ docker compose restart
 Then reconnect MCP (`/mcp` or new conversation). The golden session's logins are unaffected
 by the restart (profile persists in a Docker volume).
 
-To verify the export:
+To verify the export (prints cookie counts and domains only, never values, so no session
+tokens land in the transcript):
 ```bash
-docker exec playwright-display cat /home/pwuser/state/storage-state.json | python3 -m json.tool | head -20
+docker exec playwright-display python3 -c "import json; s=json.load(open('/home/pwuser/state/storage-state.json')); print(len(s['cookies']), 'cookies for', sorted({c['domain'] for c in s['cookies']}))"
 ```
 
 ### `golden close` — Remove golden MCP server from Claude Code
@@ -222,15 +241,50 @@ Also confirm MCP connectivity: `mcp__playwright__browser_navigate` to `https://g
 
 ### `update` — Pull upstream changes
 
-```bash
-git -C <skill-dir> submodule update --remote assets/mcp-playwright-novnc
+The image is built from the upstream submodule and then holds live session cookies, so
+review upstream changes before building them. Never update and rebuild in one step.
 
+```bash
+git -C <skill-dir>/assets/mcp-playwright-novnc fetch origin
+git -C <skill-dir>/assets/mcp-playwright-novnc log --oneline HEAD..origin/HEAD
+git -C <skill-dir>/assets/mcp-playwright-novnc diff HEAD origin/HEAD
+```
+
+Show the user the new commits and the diff, and continue only when they approve. Then:
+
+```bash
+git -C <skill-dir>/assets/mcp-playwright-novnc checkout origin/HEAD
 cd <skill-dir>/assets
 docker compose up -d --build
 ```
 
-This pulls the latest upstream commit, rebuilds the image, and restarts the container.
-After updating, reconnect the MCP server (new conversation or `/mcp`).
+Commit the new submodule pointer so the pin is recorded. After updating, reconnect the MCP
+server (new conversation or `/mcp`).
+
+The base image is pinned separately. Upstream's `Dockerfile` builds `FROM
+mcp/playwright:latest`, and `additional_contexts` in `docker-compose.yml` replaces that with an
+exact digest. To move it, pick a digest published at least 14 days ago (Docker Hub's tag list
+shows dates), show the user the change, and update the `docker-image://...@sha256:...` line
+along with its date comment.
+
+#### Chrome for Testing pin
+
+`chrome/Dockerfile` pins the browser with `CHROME_VERSION` and `CHROME_SHA256`. Chrome for
+Testing never updates itself, so this pin is the only way the browser gets security fixes.
+Check it against the Chrome Releases blog (chromereleases.googleblog.com) when a Chrome
+security release ships, and at least monthly.
+
+1. Pick the newest Stable build at least 14 days old from
+   https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json.
+   A younger build, including Beta or Canary, is allowed only when it carries a fix for an
+   actively exploited or emergency issue that no older build has; record the reason in the
+   Dockerfile comment.
+2. Download `linux64/chrome-linux64.zip` for that version and take its `sha256sum`. Google
+   publishes no checksums, so the hash records what came over TLS and keeps rebuilds
+   identical.
+3. Update both `ARG` lines and the comment, show the user the change, then
+   `docker compose build` and `docker compose up -d --no-build`. The build prints the
+   version; a hash mismatch fails it.
 
 ---
 
@@ -246,7 +300,7 @@ restart the container (`docker compose restart`) then reconnect.
 
 The MCP server isn't connected. Check:
 1. Container running? `docker ps | grep playwright-display`
-2. MCP configured? `grep playwright ~/.claude.json`
+2. MCP configured? `grep -q playwright ~/.claude.json && echo configured`
 3. If both yes, run `/mcp` to reconnect.
 
 ### `EACCES: permission denied, mkdir`
@@ -288,41 +342,38 @@ Once set up, use `mcp__playwright__` tools in any skill or task:
 | `mcp__playwright__browser_wait_for` | Wait for an element or condition |
 | `mcp__playwright__browser_hover` | Hover over an element |
 
-### File uploads
+### File uploads (uploading host files)
 
-As of the 2026-10-05 recreate, `docker-compose.yml` mounts both repos read-only at their
-**identical host paths** inside the container: `$JOBS_REPO_PATH` and `$RESUME_REPO_PATH` are
-mounted at those same absolute paths (not under `/home/pwuser/...` or `/home/node/...`). Verify before relying on this — `docker inspect playwright-display --format
-'{{json .Mounts}}'` is the ground truth, not this file.
+Directories listed in your local `docker-compose.override.yml` are mounted read-only at their
+**identical host paths** inside the container (not under `/home/pwuser/...`). Verify before
+relying on this: `docker inspect playwright-display --format '{{json .Mounts}}'` is the ground
+truth, not this file.
 
-The identical-path mount exists because of how `browser_file_upload`'s path check is split
-across two layers that otherwise disagree:
+The identical-path mount exists because `browser_file_upload`'s path check is split across two
+layers that otherwise disagree:
 - The **allowlist check** runs on the harness side (Claude Code's own MCP "roots"), which only
-  knows real host paths — in practice, the agent's own working directory (e.g. the jobs repo)
-  plus the MCP server's declared output dir
-  (`/tmp/.playwright-mcp-golden`).
+  knows real host paths: in practice, the agent's own working directory plus the MCP server's
+  declared output dir (`/tmp/.playwright-mcp-golden`).
 - The **actual file read** happens inside the container's mount namespace, which only sees
-  whatever `docker-compose.yml` bind-mounted and only at the path it was mounted to.
+  whatever the compose files bind-mounted and only at the path it was mounted to.
 
-Before the fix, the compose file mounted the jobs repo at `/home/node/jobs`: the allowlist check
-(host-side) approved `$JOBS_REPO_PATH/...` since that's the agent's real working
-directory, but the container couldn't find that path (only `/home/node/jobs` existed there) —
-`ENOENT`. Giving the container path instead failed the allowlist check first (`"outside allowed
-roots"`), since the harness didn't recognize `/home/node/...` as anything. Mounting at the same
-absolute path on both sides makes one string satisfy both checks, so upload directly from the
-host path:
+Mounting a directory at a different container path (say `/home/node/files`) breaks one check
+or the other: the host path passes the allowlist but is `ENOENT` in the container, and the
+container path exists but fails the allowlist (`"outside allowed roots"`). Mounting at the same
+absolute path on both sides makes one string satisfy both, so upload directly from the host
+path:
 
 ```
 mcp__playwright-golden__browser_file_upload
-  paths: ["<absolute $JOBS_REPO_PATH>/applications/<id>/Resume - <Name> - <Role>.pdf"]
+  paths: ["/absolute/path/to/upload-dir/<file.pdf>"]
 ```
 
-No `docker cp` step needed — the path resolves on both sides of the mount.
+No `docker cp` step needed: the path resolves on both sides of the mount.
 
-**Fallback** if a path is ever rejected (stale allowlist, container recreated with different
-mount targets, etc.): `/tmp/.playwright-mcp-golden/` is always allowed by the MCP server's own
-`--output-dir` and exists purely inside the container, so `docker cp "<host file>"
-playwright-display:/tmp/.playwright-mcp-golden/<name>` then upload from
+**Fallback** if a path is ever rejected (stale allowlist, the file is outside both mounts, the
+container was recreated with different mount targets): `/tmp/.playwright-mcp-golden/` is always
+allowed by the MCP server's own `--output-dir` and exists purely inside the container, so
+`docker cp "<host file>" playwright-display:/tmp/.playwright-mcp-golden/<name>` then upload from
 `/tmp/.playwright-mcp-golden/<name>` works regardless of mount state. Use this as a diagnostic
 too: if neither the direct host path nor this fallback works, the MCP connection itself (not the
 file path) is the problem.
@@ -342,7 +393,7 @@ After every `browser_snapshot` or `browser_screenshot`, check for:
 4. **Wait** for the user to confirm the challenge is resolved before resuming
 5. Do NOT attempt to solve, bypass, or retry past the challenge
 
-This applies to ALL sites — LinkedIn, Glassdoor, Greenhouse, Lever, Workday, or any other.
+This applies to every site.
 Captchas are a signal that automation has been detected; continuing will make it worse.
 
 ---
@@ -353,13 +404,12 @@ The container is configured with `restart: unless-stopped`, so it survives reboo
 The golden session's browser profile persists across restarts via a Docker named volume.
 
 ```bash
-export RESUME_REPO_PATH=... JOBS_REPO_PATH=...   # see "Before any sub-command" above
 cd <skill-dir>/assets
 
 docker compose up -d --build  # Start/rebuild
 docker compose restart        # Restart (reconnect MCP after)
 docker compose down           # Stop (golden profile preserved)
-docker compose down -v        # Stop and delete golden profile + storage state
+docker compose down -v        # Stop and delete golden profile + storage state (session cookies)
 ```
 
 ---

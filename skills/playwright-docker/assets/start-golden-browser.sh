@@ -14,12 +14,18 @@ mkdir -p "$GOLDEN_PROFILE"
 # Wait for X11
 sleep 3
 
-# Find the newest Chromium binary installed by Playwright
-CHROME_BIN=$(find /ms-playwright -name "chrome" -path "*/chrome-linux64/*" | sort -V | tail -1)
+# The image's pinned Chrome (CHROME_BIN), else the newest Chromium installed by Playwright
+CHROME_BIN="${CHROME_BIN:-$(find /ms-playwright -name "chrome" -path "*/chrome-linux64/*" | sort -V | tail -1)}"
 if [ -z "$CHROME_BIN" ]; then
     echo "ERROR: No Chromium binary found in /ms-playwright"
     exit 1
 fi
+
+# Chromium's profile lock records the hostname of the container that created it. After the
+# container is recreated, the old lock makes Chromium refuse to start ("profile appears to
+# be in use by another computer"). Only this container's golden browser uses the profile,
+# and nothing else is running it at this point, so the lock is stale: clear it.
+rm -f "$GOLDEN_PROFILE"/SingletonLock "$GOLDEN_PROFILE"/SingletonSocket "$GOLDEN_PROFILE"/SingletonCookie
 
 echo "Starting golden Chromium..."
 echo "  Binary: ${CHROME_BIN}"

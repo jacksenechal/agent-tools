@@ -1,10 +1,11 @@
 # Archive
 
-Skills that are no longer active but kept for reference.
+Skills that are no longer active but kept for reference. Nothing here is
+maintained or tested, and `scripts/check_no_hardcoded_paths.sh` does not check it.
 
 ## pi-swarm
 
-Retired 2026-08-06: Jack stopped using the pi agentic tooling.
+Retired 2026-08-06: the author stopped using the pi agentic tooling.
 
 It depends on external artifacts that are also retired, so it will not
 work as-is if restored:
@@ -15,3 +16,4 @@ work as-is if restored:
 
 Restoring it requires re-provisioning the `pi` ansible role, which is
 archived in the dotfiles repo at `archive/roles/pi`.
+
