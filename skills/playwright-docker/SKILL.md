@@ -34,6 +34,10 @@ Two MCP servers run in the same container on different ports:
 
 **Flow**: User logs into sites via golden session (noVNC) → export storage state → isolated sessions automatically load cookies.
 
+After an export, **every isolated session is logged in everywhere the golden session is**,
+so a page an agent visits (or text injected into one) acts with all of those logins. Export
+only when agents need the logins, and run `docker compose down -v` when you are done.
+
 ### Components
 
 - **Docker container** (`playwright-display`): Runs persistent golden Chromium + two Playwright MCP servers + noVNC
@@ -162,9 +166,10 @@ docker compose restart
 Then reconnect MCP (`/mcp` or new conversation). The golden session's logins are unaffected
 by the restart (profile persists in a Docker volume).
 
-To verify the export:
+To verify the export (prints cookie counts and domains only, never values, so no session
+tokens land in the transcript):
 ```bash
-docker exec playwright-display cat /home/pwuser/state/storage-state.json | python3 -m json.tool | head -20
+docker exec playwright-display python3 -c "import json; s=json.load(open('/home/pwuser/state/storage-state.json')); print(len(s['cookies']), 'cookies for', sorted({c['domain'] for c in s['cookies']}))"
 ```
 
 ### `golden close` — Remove golden MCP server from Claude Code
@@ -220,15 +225,27 @@ Also confirm MCP connectivity: `mcp__playwright__browser_navigate` to `https://g
 
 ### `update` — Pull upstream changes
 
-```bash
-git -C <skill-dir> submodule update --remote assets/mcp-playwright-novnc
+The image is built from the upstream submodule and then holds live session cookies, so
+review upstream changes before building them. Never update and rebuild in one step.
 
+```bash
+git -C <skill-dir>/assets/mcp-playwright-novnc fetch origin
+git -C <skill-dir>/assets/mcp-playwright-novnc log --oneline HEAD..origin/HEAD
+git -C <skill-dir>/assets/mcp-playwright-novnc diff HEAD origin/HEAD
+```
+
+Show the user the new commits and the diff, and continue only when they approve. Then:
+
+```bash
+git -C <skill-dir>/assets/mcp-playwright-novnc checkout origin/HEAD
 cd <skill-dir>/assets
 docker compose up -d --build
 ```
 
-This pulls the latest upstream commit, rebuilds the image, and restarts the container.
-After updating, reconnect the MCP server (new conversation or `/mcp`).
+Commit the new submodule pointer so the pin is recorded. Note that upstream's `Dockerfile`
+builds `FROM mcp/playwright:latest`, which is not pinned to a digest, so a rebuild can pick
+up a newer base image even when the submodule is unchanged. After updating, reconnect the MCP
+server (new conversation or `/mcp`).
 
 ---
 
@@ -244,7 +261,7 @@ restart the container (`docker compose restart`) then reconnect.
 
 The MCP server isn't connected. Check:
 1. Container running? `docker ps | grep playwright-display`
-2. MCP configured? `grep playwright ~/.claude.json`
+2. MCP configured? `grep -q playwright ~/.claude.json && echo configured`
 3. If both yes, run `/mcp` to reconnect.
 
 ### `EACCES: permission denied, mkdir`

@@ -37,13 +37,14 @@ CDN_BASE = "https://cdn.jsdelivr.net/npm"
 
 
 def content_security_policy(inline_script):
-    """Allow only the pinned CDN scripts and this page's inline script. Images are limited to
+    """Allow only the exact pinned CDN script URLs and this page's inline script. Images are limited to
     data: URIs and network requests are blocked, so injected markup cannot phone home. Inline
     styles stay allowed because Mermaid's SVG output uses them."""
     digest = base64.b64encode(hashlib.sha256(inline_script.encode()).digest()).decode()
+    urls = " ".join(f"{CDN_BASE}/{pkg}@{ver}/{path}" for pkg, ver, path, _ in CDN_SCRIPTS)
     return (
         "default-src 'none'; "
-        f"script-src {CDN_BASE.split('/npm')[0]} 'sha256-{digest}'; "
+        f"script-src {urls} 'sha256-{digest}'; "
         "style-src 'unsafe-inline'; img-src data:; font-src data:; "
         "base-uri 'none'; form-action 'none'"
     )
@@ -163,6 +164,13 @@ renderer.code = function(token) {{
 marked.setOptions({{ renderer: renderer }});
 
 // Sanitize before inserting: raw HTML in the markdown would otherwise run event handlers.
+// Links from the scouted repo open in a new tab without leaking the opener or referrer.
+DOMPurify.addHook('afterSanitizeAttributes', node => {{
+  if (node.tagName === 'A' && node.hasAttribute('href')) {{
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener noreferrer');
+  }}
+}});
 document.getElementById('content').innerHTML = DOMPurify.sanitize(marked.parse(md), {{ FORBID_TAGS: ['style'] }});
 
 // Wrap each .mermaid in a wrapper with an expand button
