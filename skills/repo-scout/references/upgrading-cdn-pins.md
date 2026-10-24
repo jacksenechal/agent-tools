@@ -29,9 +29,9 @@ cost is that upgrades are manual. This is the process.
 ## Steps
 
 1. **Pick the candidate:** the newest release in the current major that is at least 14 days
-   old. List releases with their dates:
+   old. List the latest stable releases (no prereleases) with their dates:
    ```bash
-   curl -s https://registry.npmjs.org/<pkg> | python3 -c 'import json,sys; t=json.load(sys.stdin)["time"]; [print(v, t[v][:10]) for v in list(t)[-15:]]'
+   curl -s https://registry.npmjs.org/<pkg> | python3 -c 'import json,sys; t=json.load(sys.stdin)["time"]; [print(v, t[v][:10]) for v in [v for v in t if v[0].isdigit() and "-" not in v][-15:]]'
    ```
 2. **Read the release notes** from the current pin up to the candidate. Look for anything a
    markdown renderer or sanitizer should not need: new network calls, new dependencies,
@@ -50,5 +50,6 @@ cost is that upgrades are manual. This is the process.
    <skill-dir>/tests/test_render_html.sh
    ```
    Then render a real report and open it: diagrams draw, the Expand overlay works, and the
-   browser console shows no integrity errors (an SRI failure leaves the page blank).
+   browser console shows no integrity or Content Security Policy errors (an SRI failure leaves
+   the page blank).
 6. **Commit** with the old and new versions and the release ages in the message.

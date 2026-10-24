@@ -16,6 +16,7 @@ ROOT = Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], tex
                                     cwd=Path(__file__).parent).strip())
 LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 FENCE = re.compile(r"^(```|~~~).*?^\1", re.DOTALL | re.MULTILINE)
+INLINE_CODE = re.compile(r"`[^`\n]*`")
 
 
 def frontmatter(text):
@@ -60,7 +61,7 @@ def check_links():
         path = ROOT / rel
         if not path.is_file():
             continue
-        text = FENCE.sub("", path.read_text(encoding="utf-8"))
+        text = INLINE_CODE.sub("", FENCE.sub("", path.read_text(encoding="utf-8")))
         for target in LINK.findall(text):
             if re.match(r"[a-z]+:", target) or target.startswith("#"):
                 continue  # external URL, mailto, or in-page anchor

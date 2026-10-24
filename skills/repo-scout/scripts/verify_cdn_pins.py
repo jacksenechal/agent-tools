@@ -22,6 +22,8 @@ import json
 import os
 import sys
 import tarfile
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -33,10 +35,17 @@ ADVISORIES = "https://api.github.com/advisories?ecosystem=npm&affects={pkg}@{ver
 MIN_AGE_DAYS = 14
 
 
-def fetch(url, headers=None):
+def fetch(url, headers=None, attempts=3):
+    """GET a URL, retrying transient network errors so one blip does not fail CI."""
     req = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return resp.read()
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return resp.read()
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == attempts:
+                raise
+            time.sleep(5 * attempt)
 
 
 def sri(data):
@@ -53,10 +62,10 @@ def registry_file(pkg, ver, path):
     if actual != expected:
         raise ValueError(f"{pkg}@{ver}: tarball does not match the registry's {algo} integrity")
     with tarfile.open(fileobj=io.BytesIO(tarball), mode="r:gz") as tar:
-        member = tar.extractfile(f"package/{path}")
-        if member is None:
-            raise ValueError(f"{pkg}@{ver}: {path} not found in the tarball")
-        data = member.read()
+        try:
+            data = tar.extractfile(f"package/{path}").read()
+        except KeyError:
+            raise ValueError(f"{pkg}@{ver}: {path} not found in the tarball") from None
     published = datetime.datetime.fromisoformat(meta["time"][ver].replace("Z", "+00:00"))
     return data, published
 

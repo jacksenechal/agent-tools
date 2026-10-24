@@ -20,4 +20,5 @@ check() { if grep -q "$2" "$tmp/dom.html"; then echo "ok   $1"; else echo "FAIL 
 check "markdown rendered" '<strong>bold</strong>'
 check "mermaid diagram rendered" '<svg[^>]*id="mermaid'
 check "title escaped, no payload ran" '<title>Report &lt;/title&gt;'
+check "content security policy present" 'http-equiv="Content-Security-Policy"'
 exit $fail

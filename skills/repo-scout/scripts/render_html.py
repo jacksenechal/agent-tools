@@ -8,8 +8,12 @@ mermaid.js (CDN) for diagrams. No Python dependencies beyond stdlib.
 
 The report quotes text from whatever repo was scouted, so its markdown is untrusted:
 the title is HTML-escaped, the markdown is embedded so it cannot close the <script>
-block, the rendered HTML is sanitized, and Mermaid runs with securityLevel 'strict'.
+block, the rendered HTML is sanitized, Mermaid runs with securityLevel 'strict', and a
+per-page Content Security Policy allows only the pinned scripts and the page's own inline
+script, and blocks network requests.
 """
+import base64
+import hashlib
 import html
 import json
 import sys
@@ -32,6 +36,19 @@ CDN_SCRIPTS = [
 CDN_BASE = "https://cdn.jsdelivr.net/npm"
 
 
+def content_security_policy(inline_script):
+    """Allow only the pinned CDN scripts and this page's inline script. Images are limited to
+    data: URIs and network requests are blocked, so injected markup cannot phone home. Inline
+    styles stay allowed because Mermaid's SVG output uses them."""
+    digest = base64.b64encode(hashlib.sha256(inline_script.encode()).digest()).decode()
+    return (
+        "default-src 'none'; "
+        f"script-src {CDN_BASE.split('/npm')[0]} 'sha256-{digest}'; "
+        "style-src 'unsafe-inline'; img-src data:; font-src data:; "
+        "base-uri 'none'; form-action 'none'"
+    )
+
+
 def script_tags():
     return "\n".join(
         f'<script src="{CDN_BASE}/{pkg}@{ver}/{path}" integrity="{sri}" crossorigin="anonymous"></script>'
@@ -42,6 +59,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="{csp}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <style>
@@ -123,8 +141,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 <body>
 <div id="content"></div>
 {script_tags}
-<script>
-const md = {markdown_json};
+<script>{inline_script}</script>
+</body>
+</html>'''
+
+# The page's only inline script. Its sha256 goes into the CSP, so nothing else inline can run.
+INLINE_SCRIPT = '''const md = {markdown_json};
 
 const renderer = new marked.Renderer();
 const origCode = renderer.code.bind(renderer);
@@ -141,7 +163,7 @@ renderer.code = function(token) {{
 marked.setOptions({{ renderer: renderer }});
 
 // Sanitize before inserting: raw HTML in the markdown would otherwise run event handlers.
-document.getElementById('content').innerHTML = DOMPurify.sanitize(marked.parse(md));
+document.getElementById('content').innerHTML = DOMPurify.sanitize(marked.parse(md), {{ FORBID_TAGS: ['style'] }});
 
 // Wrap each .mermaid in a wrapper with an expand button
 document.querySelectorAll('.mermaid').forEach(el => {{
@@ -186,9 +208,7 @@ document.querySelectorAll('.mermaid').forEach(el => {{
 // The report quotes text from whatever repo was scouted, so treat the markdown as untrusted:
 // 'strict' makes Mermaid encode HTML in labels and disables click handlers.
 mermaid.initialize({{ startOnLoad: true, theme: 'neutral', securityLevel: 'strict' }});
-</script>
-</body>
-</html>'''
+'''
 
 
 def main():
@@ -213,8 +233,12 @@ def main():
 
     # Escape "<" so a "</script>" in the markdown cannot end the script block early.
     markdown_json = json.dumps(content).replace("<", "\\u003c")
+    inline_script = INLINE_SCRIPT.format(markdown_json=markdown_json)
     page = HTML_TEMPLATE.format(
-        title=html.escape(title), markdown_json=markdown_json, script_tags=script_tags()
+        title=html.escape(title),
+        csp=content_security_policy(inline_script),
+        script_tags=script_tags(),
+        inline_script=inline_script,
     )
     html_path.write_text(page, encoding="utf-8")
     print(f"Rendered: {html_path}")

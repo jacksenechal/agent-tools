@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: No hard-coded paths
         run: scripts/check_no_hardcoded_paths.sh
       - name: Path guard fixtures
@@ -30,6 +32,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: shellcheck
         run: git ls-files -z '*.sh' .githooks/pre-commit ':!archive' | xargs -0 shellcheck
       - name: ruff
@@ -45,6 +49,8 @@ jobs:
         working-directory: skills/playwright-docker/assets
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - run: docker compose -f docker-compose.yml config --quiet
       - run: docker compose -f docker-compose.yml -f docker-compose.override.example.yml config --quiet
 
@@ -53,6 +59,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: CDN pins match the npm registry, no advisories
         env:
           GITHUB_TOKEN: ${{ github.token }}
