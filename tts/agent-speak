@@ -22,10 +22,10 @@ Config via environment:
 """
 import os
 import re
-import sys
-import signal
 import shutil
+import signal
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -122,7 +122,7 @@ def snapshot_and_duck():
     try:
         out = subprocess.run(
             [pactl, "list", "sink-inputs"],
-            capture_output=True, text=True, timeout=4,
+            capture_output=True, text=True, timeout=4, check=False,
         ).stdout
     except Exception:
         return saved
@@ -139,7 +139,7 @@ def snapshot_and_duck():
             target = max(0, int(pct * DUCK_LEVEL))
             try:
                 subprocess.run(
-                    [pactl, "set-sink-input-volume", index, f"{target}%"],
+                    [pactl, "set-sink-input-volume", index, f"{target}%"], check=False,
                     timeout=4,
                 )
             except Exception:
@@ -155,7 +155,7 @@ def restore(saved):
     for index, pct in saved:
         try:
             subprocess.run(
-                [pactl, "set-sink-input-volume", index, f"{pct}%"], timeout=4
+                [pactl, "set-sink-input-volume", index, f"{pct}%"], timeout=4, check=False
             )
         except Exception:
             pass

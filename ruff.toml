@@ -1,0 +1,4 @@
+[lint.per-file-ignores]
+# agent-speak runs from an agent's Stop hook and must fail open: it catches broad
+# exceptions on purpose so that a TTS failure never disrupts the session.
+"tts/agent-speak" = ["BLE001", "S110"]

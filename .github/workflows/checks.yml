@@ -39,7 +39,7 @@ jobs:
       - name: ruff
         run: |
           pip install --quiet ruff==0.16.10
-          ruff check --no-cache scripts skills
+          ruff check --no-cache scripts skills tts/agent-speak
 
   playwright-compose:
     name: playwright-docker compose config

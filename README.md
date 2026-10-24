@@ -1,6 +1,6 @@
 # agent-tools
 
-Skills for AI coding agents, mainly Claude Code. A skill is a directory with
+Skills and small tools for AI coding agents, mainly Claude Code. A skill is a directory with
 a `SKILL.md` file (instructions plus metadata) and any scripts, references, or assets it
 needs. The agent loads a skill when a request matches its description.
 
@@ -12,7 +12,8 @@ needs. The agent loads a skill when a request matches its description.
 | [`skills/repo-scout`](skills/repo-scout/SKILL.md) | Produces a short orientation report on an unfamiliar codebase (topology, entry points, architecture, trust boundaries, risk hotspots) with Mermaid diagrams, rendered to HTML. |
 | [`skills/semi-formal-code-reasoning`](skills/semi-formal-code-reasoning/SKILL.md) | Structured templates for reasoning about code without running it: explicit premises, traced execution paths, and stated conclusions. Covers code questions, patch equivalence, and fault localization. Adapted from [Ugare and Chandra, "Agentic Code Reasoning" (2026)](https://arxiv.org/abs/2603.01896). |
 | [`skills/skill-security-auditor`](skills/skill-security-auditor/SKILL.md) | Audits third-party agent skills by comparing what a skill says it does with what it can actually do, run in a sandboxed subagent so hostile content never reaches the main agent. |
-| [`archive/`](archive/README.md) | Retired skills and tools kept for reference, including a local TTS (text-to-speech) hook. Not maintained. |
+| [`tts/`](tts/README.md) | Speaks agent replies aloud with a local TTS (text-to-speech) engine, Kokoro, and lowers other audio while it talks. Includes a Claude Code Stop hook. Not a skill; it has its own `install.sh`. |
+| [`archive/`](archive/README.md) | Retired skills kept for reference. Not maintained. |
 
 ## Installing a skill
 
