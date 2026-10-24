@@ -5,11 +5,15 @@
 #   Chromium-in-Docker images. The golden browser also runs with --no-sandbox, so the
 #   container, not Chromium's sandbox, is the isolation boundary. Only browse sites you
 #   would trust with that.
-# - noVNC (no password), both MCP servers (--allowed-hosts "*") and the golden browser's
-#   DevTools port listen on 0.0.0.0 inside the container. That is acceptable because the
-#   host publishes noVNC and MCP on 127.0.0.1 only (see `ports`) and does not publish
-#   DevTools, so nothing on the LAN can reach them. Local processes and other containers
-#   on playwright-network can, and they would be driving a logged-in browser.
+# - noVNC, both MCP servers and the golden browser's DevTools port listen on 0.0.0.0
+#   inside the container. That is acceptable because the host publishes noVNC and MCP on
+#   127.0.0.1 only (see `ports`) and does not publish DevTools, so nothing on the LAN can
+#   reach them. On the host, the MCP servers accept only localhost Host headers (blocking
+#   DNS rebinding from web pages) and noVNC requires a password (see entrypoint.sh).
+#   Other containers on playwright-network can still reach DevTools.
+# - no-new-privileges: processes cannot gain privileges through setuid binaries.
+# - The upstream Dockerfile builds FROM mcp/playwright:latest. additional_contexts below
+#   pins that to a digest, so a rebuild cannot silently pick up a new base image.
 # - `golden export` writes the golden session's cookies and localStorage, which are live
 #   session credentials, as plaintext JSON in the storage-state volume. Remove them with
 #   `docker compose down -v` when you no longer need them (this also deletes the golden
@@ -23,6 +27,10 @@ services:
   playwright-display:
     build:
       context: ./mcp-playwright-novnc
+      additional_contexts:
+        # mcp/playwright:latest as published 2026-06-26. Change it deliberately (see
+        # "update" in SKILL.md).
+        "mcp/playwright:latest": "docker-image://mcp/playwright@sha256:8771dc4666e7c11440bfc6a0c6b00480e9a15b8891b45f29a52d7d995f8d1492"
     image: mcp-playwright-novnc:local
     container_name: playwright-display
     # Start as root to fix volume permissions, then supervisord runs processes as pwuser
@@ -59,6 +67,7 @@ services:
       - SYS_PTRACE
     security_opt:
       - seccomp:unconfined
+      - no-new-privileges:true
     restart: unless-stopped
     networks:
       - playwright-network

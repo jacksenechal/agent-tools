@@ -42,7 +42,7 @@ only when agents need the logins, and run `docker compose down -v` when you are 
 
 - **Docker container** (`playwright-display`): Runs persistent golden Chromium + two Playwright MCP servers + noVNC
 - **MCP connection**: Claude Code connects via `mcp__playwright__` tools (stdio → SSE proxy)
-- **noVNC**: http://localhost:6080/vnc.html — watch or manually interact with the browser
+- **noVNC**: http://localhost:6080/vnc.html — watch or manually interact with the browser (password protected, see below)
 - **Golden session** (port 3081): Persistent browser profile for logins
 - **Isolated sessions** (port 3080): Ephemeral browsers pre-loaded with exported auth state
 
@@ -99,8 +99,17 @@ Verify it's running:
 docker ps | grep playwright-display
 ```
 
-noVNC is at http://localhost:6080/vnc.html. The golden Chromium browser starts
-automatically. Isolated browsers launch on the first MCP tool call.
+noVNC is at http://localhost:6080/vnc.html and asks for a password. The entrypoint generates
+one on first start (or uses `VNC_PASSWORD` if you set it in your override's `environment`).
+Give the user this command to read it:
+
+```bash
+docker exec playwright-display cat /home/pwuser/vnc/password
+```
+
+A generated password survives `docker compose restart` but changes when the container is
+recreated. The golden Chromium browser starts automatically. Isolated browsers launch on the
+first MCP tool call.
 
 #### 2. Add the MCP server (user-scoped, persists across all projects)
 
@@ -242,10 +251,14 @@ cd <skill-dir>/assets
 docker compose up -d --build
 ```
 
-Commit the new submodule pointer so the pin is recorded. Note that upstream's `Dockerfile`
-builds `FROM mcp/playwright:latest`, which is not pinned to a digest, so a rebuild can pick
-up a newer base image even when the submodule is unchanged. After updating, reconnect the MCP
+Commit the new submodule pointer so the pin is recorded. After updating, reconnect the MCP
 server (new conversation or `/mcp`).
+
+The base image is pinned separately. Upstream's `Dockerfile` builds `FROM
+mcp/playwright:latest`, and `additional_contexts` in `docker-compose.yml` replaces that with an
+exact digest. To move it, pick a digest published at least 14 days ago (Docker Hub's tag list
+shows dates), show the user the change, and update the `docker-image://...@sha256:...` line
+along with its date comment.
 
 ---
 

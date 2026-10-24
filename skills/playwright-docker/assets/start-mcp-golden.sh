@@ -32,7 +32,7 @@ exec node /app/cli.js \
     --port "${GOLDEN_PORT}" \
     --host 0.0.0.0 \
     --cdp-endpoint "http://localhost:${CDP_PORT}" \
-    --allowed-hosts "*" \
+    --allowed-hosts "localhost:${GOLDEN_PORT},127.0.0.1:${GOLDEN_PORT}" \
     --viewport-size "${VIEWPORT_WIDTH}x${VIEWPORT_HEIGHT}" \
     --output-dir /tmp/.playwright-mcp-golden \
     --shared-browser-context

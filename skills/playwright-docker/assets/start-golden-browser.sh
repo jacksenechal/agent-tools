@@ -21,6 +21,12 @@ if [ -z "$CHROME_BIN" ]; then
     exit 1
 fi
 
+# Chromium's profile lock records the hostname of the container that created it. After the
+# container is recreated, the old lock makes Chromium refuse to start ("profile appears to
+# be in use by another computer"). Only this container's golden browser uses the profile,
+# and nothing else is running it at this point, so the lock is stale: clear it.
+rm -f "$GOLDEN_PROFILE"/SingletonLock "$GOLDEN_PROFILE"/SingletonSocket "$GOLDEN_PROFILE"/SingletonCookie
+
 echo "Starting golden Chromium..."
 echo "  Binary: ${CHROME_BIN}"
 echo "  Profile: ${GOLDEN_PROFILE}"

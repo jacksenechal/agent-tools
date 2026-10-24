@@ -30,13 +30,15 @@ echo "  Storage state: ${STORAGE_STATE_ARGS:-none}"
 # don't exist inside the container. Without this flag the server tries to mkdir
 # at those paths and fails with EACCES. This overrides that behavior.
 # See: https://github.com/microsoft/playwright-mcp/issues/1240#issuecomment-2888187192
+# --allowed-hosts: only accept the Host headers a local client sends, so a web page
+# using DNS rebinding cannot drive the browser through this server.
 # shellcheck disable=SC2086
 exec node /app/cli.js \
     --port "${MCP_PORT:-3000}" \
     --host 0.0.0.0 \
     --browser "${MCP_BROWSER:-chromium}" \
     --config /etc/playwright-config.json \
-    --allowed-hosts "*" \
+    --allowed-hosts "localhost:${MCP_PORT:-3000},127.0.0.1:${MCP_PORT:-3000}" \
     --viewport-size "${VIEWPORT_WIDTH}x${VIEWPORT_HEIGHT}" \
     --output-dir /tmp/.playwright-mcp \
     --isolated \
