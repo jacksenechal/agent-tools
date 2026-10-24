@@ -14,8 +14,8 @@ mkdir -p "$GOLDEN_PROFILE"
 # Wait for X11
 sleep 3
 
-# Find the newest Chromium binary installed by Playwright
-CHROME_BIN=$(find /ms-playwright -name "chrome" -path "*/chrome-linux64/*" | sort -V | tail -1)
+# The image's pinned Chrome (CHROME_BIN), else the newest Chromium installed by Playwright
+CHROME_BIN="${CHROME_BIN:-$(find /ms-playwright -name "chrome" -path "*/chrome-linux64/*" | sort -V | tail -1)}"
 if [ -z "$CHROME_BIN" ]; then
     echo "ERROR: No Chromium binary found in /ms-playwright"
     exit 1

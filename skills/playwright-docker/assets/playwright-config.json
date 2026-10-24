@@ -1,0 +1,13 @@
+{
+  "browser": {
+    "launchOptions": {
+      "headless": false,
+      "executablePath": "/opt/chrome-for-testing/chrome-linux64/chrome",
+      "ignoreDefaultArgs": ["--disable-component-update"],
+      "args": [
+        "--no-sandbox",
+        "--disable-dev-shm-usage"
+      ]
+    }
+  }
+}

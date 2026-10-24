@@ -14,6 +14,11 @@
 # - no-new-privileges: processes cannot gain privileges through setuid binaries.
 # - The upstream Dockerfile builds FROM mcp/playwright:latest. additional_contexts below
 #   pins that to a digest, so a rebuild cannot silently pick up a new base image.
+# - Both browsers run a pinned Chrome for Testing build (chrome/Dockerfile), not the one
+#   Playwright bundles. Chrome for Testing never updates itself, but Chrome still downloads
+#   its certificate revocation list (CRLSet) in the background. Playwright turns that off by
+#   default; playwright-config.json turns it back on so isolated sessions receive emergency
+#   certificate blocks too. A fresh isolated session has no list until the first download.
 # - `golden export` writes the golden session's cookies and localStorage, which are live
 #   session credentials, as plaintext JSON in the storage-state volume. Remove them with
 #   `docker compose down -v` when you no longer need them (this also deletes the golden
@@ -24,13 +29,23 @@
 # Docker Compose merges in automatically. See "File uploads" in SKILL.md.
 
 services:
-  playwright-display:
+  # Build-only: the upstream image. The base profile keeps `up` from starting it.
+  playwright-base:
+    profiles: [base]
     build:
       context: ./mcp-playwright-novnc
       additional_contexts:
         # mcp/playwright:latest as published 2026-06-26. Change it deliberately (see
         # "update" in SKILL.md).
         "mcp/playwright:latest": "docker-image://mcp/playwright@sha256:8771dc4666e7c11440bfc6a0c6b00480e9a15b8891b45f29a52d7d995f8d1492"
+    image: mcp-playwright-novnc:base
+
+  playwright-display:
+    build:
+      # Adds the pinned Chrome for Testing build (see chrome/Dockerfile).
+      context: ./chrome
+      additional_contexts:
+        base: "service:playwright-base"
     image: mcp-playwright-novnc:local
     container_name: playwright-display
     # Start as root to fix volume permissions, then supervisord runs processes as pwuser
@@ -55,6 +70,8 @@ services:
       # Custom entrypoint + supervisord.conf overlay
       - ./entrypoint.sh:/entrypoint.sh:ro
       - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:ro
+      # Isolated sessions: pinned Chrome binary, background component updates left on
+      - ./playwright-config.json:/etc/playwright-config.json:ro
     environment:
       - SCREEN_WIDTH=1920
       - SCREEN_HEIGHT=1080

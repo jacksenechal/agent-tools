@@ -59,6 +59,13 @@ overlay changes without modifying it:
 5. **`start-mcp-golden.sh`** — golden MCP server that connects to golden Chromium via `--cdp-endpoint`.
 6. **`export-storage-state.js`** — exports auth state from golden browser via Playwright CDP.
 7. **Custom `entrypoint.sh`** — fixes Docker volume ownership before starting supervisord.
+8. **`chrome/Dockerfile`** — layers a pinned Chrome for Testing build over the upstream image
+   (built as the `playwright-base` service). Both browsers run it, not Playwright's bundled
+   Chromium.
+9. **`playwright-config.json`** — points isolated sessions at that binary and keeps Chrome's
+   background component updates on, so they receive the certificate revocation list
+   (CRLSet). Playwright disables those updates by default, which leaves an automation
+   browser without Chrome's emergency certificate blocks.
 
 ## Prerequisites
 
@@ -259,6 +266,25 @@ mcp/playwright:latest`, and `additional_contexts` in `docker-compose.yml` replac
 exact digest. To move it, pick a digest published at least 14 days ago (Docker Hub's tag list
 shows dates), show the user the change, and update the `docker-image://...@sha256:...` line
 along with its date comment.
+
+#### Chrome for Testing pin
+
+`chrome/Dockerfile` pins the browser with `CHROME_VERSION` and `CHROME_SHA256`. Chrome for
+Testing never updates itself, so this pin is the only way the browser gets security fixes.
+Check it against the Chrome Releases blog (chromereleases.googleblog.com) when a Chrome
+security release ships, and at least monthly.
+
+1. Pick the newest Stable build at least 14 days old from
+   https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json.
+   A younger build, including Beta or Canary, is allowed only when it carries a fix for an
+   actively exploited or emergency issue that no older build has; record the reason in the
+   Dockerfile comment.
+2. Download `linux64/chrome-linux64.zip` for that version and take its `sha256sum`. Google
+   publishes no checksums, so the hash records what came over TLS and keeps rebuilds
+   identical.
+3. Update both `ARG` lines and the comment, show the user the change, then
+   `docker compose build` and `docker compose up -d --no-build`. The build prints the
+   version; a hash mismatch fails it.
 
 ---
 
