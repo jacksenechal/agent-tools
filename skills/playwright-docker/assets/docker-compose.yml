@@ -29,9 +29,10 @@
 # Docker Compose merges in automatically. See "File uploads" in SKILL.md.
 
 services:
-  # Build-only: the upstream image. The base profile keeps `up` from starting it.
+  # Build-only: the upstream image. scale: 0 keeps `up` from starting a container for it.
   playwright-base:
-    profiles: [base]
+    scale: 0
+    network_mode: none
     build:
       context: ./mcp-playwright-novnc
       additional_contexts:
