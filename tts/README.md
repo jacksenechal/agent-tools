@@ -122,6 +122,6 @@ symlinks.
   (OpenAI-compatible `/v1/audio/speech`, streaming, CPU images) in Docker on
   localhost. `agent-speak` would become a thin client that streams from it
   through the existing ducking, and falls back to the cold `kokoro-tts` CLI
-  when the server is down. Not built yet.
+  when the server is down. Not built yet; the plan is in `TODO.md`.
 - **CPU inference:** Kokoro is 82 M parameters and runs on CPU, fast enough in
   practice.
