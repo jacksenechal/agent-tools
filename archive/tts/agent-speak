@@ -210,7 +210,10 @@ def main():
         sys.stderr.write(f"agent-speak: {RUNTIME} is not a directory we own; skipping\n")
         return 0
     # Own a fresh process group so a future invocation can kill our whole tree.
-    os.setpgrp()
+    # Under `setsid` (how the hook launches us) we already lead our own session
+    # and group, and setpgrp() would fail with EPERM.
+    if os.getpgrp() != os.getpid():
+        os.setpgrp()
     kill_previous()
     PIDFILE.write_text(str(os.getpid()))
 
