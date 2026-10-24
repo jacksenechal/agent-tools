@@ -18,7 +18,7 @@
 #   Playwright bundles. Chrome for Testing never updates itself, but Chrome still downloads
 #   its certificate revocation list (CRLSet) in the background. Playwright turns that off by
 #   default; playwright-config.json turns it back on so isolated sessions receive emergency
-#   certificate blocks too. A fresh isolated session has no list until the first download.
+#   certificate blocks too. A fresh isolated session has no list for its first minute or so.
 # - `golden export` writes the golden session's cookies and localStorage, which are live
 #   session credentials, as plaintext JSON in the storage-state volume. Remove them with
 #   `docker compose down -v` when you no longer need them (this also deletes the golden
