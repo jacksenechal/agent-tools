@@ -17,6 +17,11 @@ mode of guessing semantics from function names or making unsupported equivalence
 **Key principle:** Gather evidence first, conclude last. The structured template acts as
 a certificate — you cannot skip cases or make unsupported claims.
 
+This skill adapts the method from Shubham Ugare and Satish Chandra,
+["Agentic Code Reasoning"](https://arxiv.org/abs/2603.01896) (arXiv:2603.01896, 2026), which
+introduces semi-formal reasoning and evaluates it on patch equivalence, fault localization, and
+code question answering.
+
 ## When To Use This
 
 Always use for: code review; patch equivalence (do these diffs produce the same test

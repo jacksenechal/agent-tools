@@ -120,6 +120,9 @@ After all phases, write a "Next Steps" section (~1/2 page):
    python3 <this-skill-directory>/scripts/render_html.py \
      "$out/REPO-SCOUT.md" "$out/REPO-SCOUT.html"
    ```
+   The page loads its scripts from a CDN at exact, hash-pinned versions. If they look stale
+   (more than about six months old), say so at the end; the upgrade process is in
+   `references/upgrading-cdn-pins.md`.
 4. Open in the system browser and tell the user where the files are:
    ```bash
    xdg-open "$out/REPO-SCOUT.html"   # Linux

@@ -3,12 +3,40 @@
 
 Usage: render_html.py <markdown-file> [output-html]
 
-Uses marked.js (CDN) for markdown rendering and mermaid.js (CDN) for diagrams.
-No Python dependencies beyond stdlib.
+Uses marked.js (CDN) for markdown rendering, DOMPurify (CDN) to sanitize it, and
+mermaid.js (CDN) for diagrams. No Python dependencies beyond stdlib.
+
+The report quotes text from whatever repo was scouted, so its markdown is untrusted:
+the title is HTML-escaped, the markdown is embedded so it cannot close the <script>
+block, the rendered HTML is sanitized, and Mermaid runs with securityLevel 'strict'.
 """
+import html
 import json
 import sys
 from pathlib import Path
+
+# Exact versions with SRI (Subresource Integrity) hashes, so the browser refuses any file
+# that differs from the one reviewed. To change one, follow references/upgrading-cdn-pins.md;
+# scripts/verify_cdn_pins.py checks every entry against the npm registry tarball.
+# (npm package, version, file within the package, sha384 integrity)
+CDN_SCRIPTS = [
+    ("marked", "15.0.12", "marked.min.js",
+     "sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"),
+    # 3.4.17 is under the 14-day minimum age: allowed as the first release patching
+    # GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr and GHSA-c6gr-qvv4-5v3f against 3.4.16.
+    ("dompurify", "3.4.17", "dist/purify.min.js",
+     "sha384-P0JNneQf81HOl9VwNXK76cQ9VMD6Nfsnepxb0cCOg8+UzEdzgPHAPV4wVQrvYQSx"),
+    ("mermaid", "11.17.2", "dist/mermaid.min.js",
+     "sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2"),
+]
+CDN_BASE = "https://cdn.jsdelivr.net/npm"
+
+
+def script_tags():
+    return "\n".join(
+        f'<script src="{CDN_BASE}/{pkg}@{ver}/{path}" integrity="{sri}" crossorigin="anonymous"></script>'
+        for pkg, ver, path, sri in CDN_SCRIPTS
+    )
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="en">
@@ -94,8 +122,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 </head>
 <body>
 <div id="content"></div>
-<script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+{script_tags}
 <script>
 const md = {markdown_json};
 
@@ -105,13 +132,16 @@ renderer.code = function(token) {{
   const text = typeof token === 'object' ? token.text : token;
   const lang = typeof token === 'object' ? token.lang : arguments[1];
   if (lang === 'mermaid') {{
-    return '<div class="mermaid">' + text + '</div>';
+    // Escape so the diagram source survives as text; mermaid reads it back via textContent.
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<div class="mermaid">' + escaped + '</div>';
   }}
   return origCode(token);
 }};
 marked.setOptions({{ renderer: renderer }});
 
-document.getElementById('content').innerHTML = marked.parse(md);
+// Sanitize before inserting: raw HTML in the markdown would otherwise run event handlers.
+document.getElementById('content').innerHTML = DOMPurify.sanitize(marked.parse(md));
 
 // Wrap each .mermaid in a wrapper with an expand button
 document.querySelectorAll('.mermaid').forEach(el => {{
@@ -142,7 +172,7 @@ function openOverlay(mermaidEl) {{
   const clone = mermaidEl.cloneNode(true);
   // Strip the old rendered id so mermaid re-renders at full size
   clone.removeAttribute('data-processed');
-  clone.innerHTML = mermaidEl.getAttribute('data-original') || mermaidEl.textContent;
+  clone.textContent = mermaidEl.getAttribute('data-original') || mermaidEl.textContent;
   content.appendChild(clone);
   overlay.classList.add('active');
   mermaid.run({{ nodes: [clone] }});
@@ -181,8 +211,12 @@ def main():
             title = line.lstrip("# ").strip()
             break
 
-    html = HTML_TEMPLATE.format(title=title, markdown_json=json.dumps(content))
-    html_path.write_text(html, encoding="utf-8")
+    # Escape "<" so a "</script>" in the markdown cannot end the script block early.
+    markdown_json = json.dumps(content).replace("<", "\\u003c")
+    page = HTML_TEMPLATE.format(
+        title=html.escape(title), markdown_json=markdown_json, script_tags=script_tags()
+    )
+    html_path.write_text(page, encoding="utf-8")
     print(f"Rendered: {html_path}")
 
 

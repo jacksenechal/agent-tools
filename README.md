@@ -1,6 +1,6 @@
 # agent-tools
 
-Skills and small tools for AI coding agents, mainly Claude Code. A skill is a directory with
+Skills for AI coding agents, mainly Claude Code. A skill is a directory with
 a `SKILL.md` file (instructions plus metadata) and any scripts, references, or assets it
 needs. The agent loads a skill when a request matches its description.
 
@@ -10,10 +10,9 @@ needs. The agent loads a skill when a request matches its description.
 |---|---|
 | [`skills/playwright-docker`](skills/playwright-docker/SKILL.md) | Runs Chromium, two Playwright MCP (Model Context Protocol) servers, and a noVNC viewer in Docker, with a persistent logged-in "golden" session and isolated sessions that reuse its exported login state. |
 | [`skills/repo-scout`](skills/repo-scout/SKILL.md) | Produces a short orientation report on an unfamiliar codebase (topology, entry points, architecture, trust boundaries, risk hotspots) with Mermaid diagrams, rendered to HTML. |
-| [`skills/semi-formal-code-reasoning`](skills/semi-formal-code-reasoning/SKILL.md) | Structured templates for reasoning about code without running it: explicit premises, traced execution paths, and stated conclusions. Covers code questions, patch equivalence, and fault localization. |
+| [`skills/semi-formal-code-reasoning`](skills/semi-formal-code-reasoning/SKILL.md) | Structured templates for reasoning about code without running it: explicit premises, traced execution paths, and stated conclusions. Covers code questions, patch equivalence, and fault localization. Adapted from [Ugare and Chandra, "Agentic Code Reasoning" (2026)](https://arxiv.org/abs/2603.01896). |
 | [`skills/skill-security-auditor`](skills/skill-security-auditor/SKILL.md) | Audits third-party agent skills by comparing what a skill says it does with what it can actually do, run in a sandboxed subagent so hostile content never reaches the main agent. |
-| [`tts/`](tts/README.md) | Speaks agent replies aloud with a local TTS (text-to-speech) engine, Kokoro, and lowers other audio while it talks. Includes a Claude Code Stop hook. Not a skill; it has its own `install.sh`. |
-| [`archive/`](archive/README.md) | Retired skills kept for reference. Not maintained. |
+| [`archive/`](archive/README.md) | Retired skills and tools kept for reference, including a local TTS (text-to-speech) hook. Not maintained. |
 
 ## Installing a skill
 
@@ -39,6 +38,12 @@ enforces the second rule. Run it before committing, or enable it as a pre-commit
 ```bash
 git config core.hooksPath .githooks
 ```
+
+CI (continuous integration, [`.github/workflows/checks.yml`](.github/workflows/checks.yml))
+runs on every push to `main`, every pull request, and weekly. It runs the path guard and its
+fixture tests, a skill metadata and link check, `shellcheck` and `ruff`, a `docker compose
+config` validation for `playwright-docker`, and two repo-scout checks: its CDN pins against the
+npm registry and the GitHub advisory database, and a hostile report rendered in headless Chrome.
 
 ## How this is built
 

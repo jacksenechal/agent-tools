@@ -13,6 +13,7 @@
 set -uo pipefail
 cd "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 2
 
+# shellcheck disable=SC2016  # literal regex: $HOME here must match the text, not expand
 PATTERN='(~|\$HOME|\$\{HOME\}|%h)/workspace\b|/home/(?!pwuser/|node/|arcadedb/)[a-z_][a-z0-9_.-]*/|/Users/[A-Za-z0-9_.-]+/'
 
 if (( $# )); then
