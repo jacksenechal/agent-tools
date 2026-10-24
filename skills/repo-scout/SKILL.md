@@ -108,16 +108,22 @@ After all phases, write a "Next Steps" section (~1/2 page):
 
 1. Assemble the full report using the template below. The topology investigation
    from Phase 1 provides the stats for the header (file count, LOC, primary language).
-2. Write to `REPO-SCOUT.md` in the repo root.
+2. Write the report **outside the scouted repo's tree**, so it can never be committed there:
+   ```bash
+   out="${XDG_DATA_HOME:-$HOME/.local/share}/repo-scout/<repo-name>"
+   mkdir -p "$out"   # then write "$out/REPO-SCOUT.md"
+   ```
+   If the user asks for the report inside the repo, add `REPO-SCOUT.*` to the repo's
+   `.git/info/exclude` first.
 3. Render to HTML:
    ```bash
    python3 <this-skill-directory>/scripts/render_html.py \
-     <repo-path>/REPO-SCOUT.md <repo-path>/REPO-SCOUT.html
+     "$out/REPO-SCOUT.md" "$out/REPO-SCOUT.html"
    ```
-4. Open in the system browser:
+4. Open in the system browser and tell the user where the files are:
    ```bash
-   xdg-open <repo-path>/REPO-SCOUT.html   # Linux
-   open <repo-path>/REPO-SCOUT.html        # macOS
+   xdg-open "$out/REPO-SCOUT.html"   # Linux
+   open "$out/REPO-SCOUT.html"        # macOS
    ```
 
 ## Synthesis Principles
@@ -151,16 +157,18 @@ pipeline, `graph TD` for architecture, `erDiagram` for data model. Keep diagrams
 5-12 nodes — a 30-node diagram is worse than prose. Diagrams complement text; they
 don't replace it.
 
-**Validate every diagram.** After assembling the full report, extract each mermaid code
-block and validate its syntax before writing the file. Run:
+**Validate diagrams (optional).** This step runs only if mermaid-cli is already installed
+locally at a pinned version: `mmdc` on the `PATH`, or `pnpm exec mmdc` / `npm exec --no-install
+mmdc` in a project that pins `@mermaid-js/mermaid-cli`. Never install it on the fly (no `npx`,
+no `@latest`); if it is not installed, skip validation and say so in your reply. To validate,
+write each mermaid block to a temp `.mmd` file and render it:
 ```bash
-npx -y @mermaid-js/mermaid-cli@latest parse -i /tmp/repo-scout-check.mmd 2>&1
+mmdc -i "$tmp/check.mmd" -o "$tmp/check.svg" 2>&1
 ```
-for each block (write the block content to a temp `.mmd` file, run the check, read
-stderr). Common mistakes: unquoted labels containing special characters (parentheses,
-brackets, colons, commas) — wrap them in double quotes. Missing arrow syntax. Colons
-in node labels (use `["label: text"]` syntax). If a diagram fails validation, fix the
-syntax and re-check until it passes. Only then write REPO-SCOUT.md.
+A syntax error fails the render. Whether or not you can validate, avoid the common mistakes:
+unquoted labels containing special characters (parentheses, brackets, colons, commas), so wrap
+them in double quotes; missing arrow syntax; colons in node labels (use `["label: text"]`
+syntax). Fix any diagram that fails and re-check before writing REPO-SCOUT.md.
 
 ## Report Template
 

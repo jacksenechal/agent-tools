@@ -26,6 +26,8 @@ import sys
 import signal
 import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 HOME = Path.home()
@@ -40,7 +42,12 @@ DUCK = os.environ.get("AGENT_SPEAK_DUCK", "1") != "0"
 DUCK_LEVEL = float(os.environ.get("AGENT_SPEAK_DUCK_LEVEL", "0.25"))
 MAXCHARS = int(os.environ.get("AGENT_SPEAK_MAXCHARS", "1200"))
 
-RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "agent-speak"
+# Per-user runtime dir for the pidfile. Without XDG_RUNTIME_DIR, fall back to a
+# uid-named dir under the temp dir; main() refuses it unless we own it, because
+# kill_previous() signals whatever PID the file holds.
+_xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
+RUNTIME = (Path(_xdg_runtime) / "agent-speak" if _xdg_runtime
+           else Path(tempfile.gettempdir()) / f"agent-speak-{os.getuid()}")
 PIDFILE = RUNTIME / "current.pid"
 
 # Persistent mute flag, toggleable mid-session via the `tts` command.
@@ -176,7 +183,6 @@ def kill_previous():
             return
         except Exception:
             return
-        import time
         time.sleep(0.02)
 
 
@@ -198,7 +204,11 @@ def main():
     if not text:
         return 0
 
-    RUNTIME.mkdir(parents=True, exist_ok=True)
+    RUNTIME.mkdir(mode=0o700, parents=True, exist_ok=True)
+    st = RUNTIME.lstat()
+    if not RUNTIME.is_dir() or RUNTIME.is_symlink() or st.st_uid != os.getuid():
+        sys.stderr.write(f"agent-speak: {RUNTIME} is not a directory we own; skipping\n")
+        return 0
     # Own a fresh process group so a future invocation can kill our whole tree.
     os.setpgrp()
     kill_previous()

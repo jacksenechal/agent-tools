@@ -60,14 +60,11 @@ overlay changes without modifying it:
 
 Before any sub-command, ensure the submodule is initialized and the image exists.
 
-**All `docker compose` commands require `RESUME_REPO_PATH` and `JOBS_REPO_PATH`** (the
-compose file mounts both repos as volumes: the résumé repo for the canonical résumé, the jobs
-repo for per-job tailored résumés at `applications/<id>/`). Set them before every docker compose
-invocation, as the two repos' absolute paths:
-
-```bash
-export RESUME_REPO_PATH=/path/to/resume-repo JOBS_REPO_PATH=/path/to/jobs-repo
-```
+**Optional upload directories.** The base compose file mounts no host directories. To let
+the browser upload files from the host, copy `assets/docker-compose.override.example.yml` to
+`assets/docker-compose.override.yml` (gitignored) and list the directories there. Docker
+Compose merges the override into every `docker compose` command run in `assets/`. See
+[File uploads](#file-uploads-uploading-host-files).
 
 ```bash
 # Initialize submodule (no-op if already present)
@@ -152,7 +149,8 @@ After logging into sites in the golden session, export cookies and localStorage:
 docker exec -e NODE_PATH=/app/node_modules playwright-display node /usr/local/bin/export-storage-state.js /home/pwuser/state/storage-state.json
 ```
 
-This writes a Playwright storage state file. The isolated MCP server loads `--storage-state`
+This writes a Playwright storage state file. It holds live session cookies in plaintext;
+`docker compose down -v` deletes it (and the golden profile) when you no longer need it. The isolated MCP server loads `--storage-state`
 at process startup, so after exporting you need to restart the container for isolated
 sessions to pick up the new auth state:
 
@@ -288,41 +286,38 @@ Once set up, use `mcp__playwright__` tools in any skill or task:
 | `mcp__playwright__browser_wait_for` | Wait for an element or condition |
 | `mcp__playwright__browser_hover` | Hover over an element |
 
-### File uploads
+### File uploads (uploading host files)
 
-As of the 2026-10-05 recreate, `docker-compose.yml` mounts both repos read-only at their
-**identical host paths** inside the container: `$JOBS_REPO_PATH` and `$RESUME_REPO_PATH` are
-mounted at those same absolute paths (not under `/home/pwuser/...` or `/home/node/...`). Verify before relying on this — `docker inspect playwright-display --format
-'{{json .Mounts}}'` is the ground truth, not this file.
+Directories listed in your local `docker-compose.override.yml` are mounted read-only at their
+**identical host paths** inside the container (not under `/home/pwuser/...`). Verify before
+relying on this: `docker inspect playwright-display --format '{{json .Mounts}}'` is the ground
+truth, not this file.
 
-The identical-path mount exists because of how `browser_file_upload`'s path check is split
-across two layers that otherwise disagree:
+The identical-path mount exists because `browser_file_upload`'s path check is split across two
+layers that otherwise disagree:
 - The **allowlist check** runs on the harness side (Claude Code's own MCP "roots"), which only
-  knows real host paths — in practice, the agent's own working directory (e.g. the jobs repo)
-  plus the MCP server's declared output dir
-  (`/tmp/.playwright-mcp-golden`).
+  knows real host paths: in practice, the agent's own working directory plus the MCP server's
+  declared output dir (`/tmp/.playwright-mcp-golden`).
 - The **actual file read** happens inside the container's mount namespace, which only sees
-  whatever `docker-compose.yml` bind-mounted and only at the path it was mounted to.
+  whatever the compose files bind-mounted and only at the path it was mounted to.
 
-Before the fix, the compose file mounted the jobs repo at `/home/node/jobs`: the allowlist check
-(host-side) approved `$JOBS_REPO_PATH/...` since that's the agent's real working
-directory, but the container couldn't find that path (only `/home/node/jobs` existed there) —
-`ENOENT`. Giving the container path instead failed the allowlist check first (`"outside allowed
-roots"`), since the harness didn't recognize `/home/node/...` as anything. Mounting at the same
-absolute path on both sides makes one string satisfy both checks, so upload directly from the
-host path:
+Mounting a directory at a different container path (say `/home/node/files`) breaks one check
+or the other: the host path passes the allowlist but is `ENOENT` in the container, and the
+container path exists but fails the allowlist (`"outside allowed roots"`). Mounting at the same
+absolute path on both sides makes one string satisfy both, so upload directly from the host
+path:
 
 ```
 mcp__playwright-golden__browser_file_upload
-  paths: ["<absolute $JOBS_REPO_PATH>/applications/<id>/Resume - <Name> - <Role>.pdf"]
+  paths: ["/absolute/path/to/upload-dir/<file.pdf>"]
 ```
 
-No `docker cp` step needed — the path resolves on both sides of the mount.
+No `docker cp` step needed: the path resolves on both sides of the mount.
 
-**Fallback** if a path is ever rejected (stale allowlist, container recreated with different
-mount targets, etc.): `/tmp/.playwright-mcp-golden/` is always allowed by the MCP server's own
-`--output-dir` and exists purely inside the container, so `docker cp "<host file>"
-playwright-display:/tmp/.playwright-mcp-golden/<name>` then upload from
+**Fallback** if a path is ever rejected (stale allowlist, the file is outside both mounts, the
+container was recreated with different mount targets): `/tmp/.playwright-mcp-golden/` is always
+allowed by the MCP server's own `--output-dir` and exists purely inside the container, so
+`docker cp "<host file>" playwright-display:/tmp/.playwright-mcp-golden/<name>` then upload from
 `/tmp/.playwright-mcp-golden/<name>` works regardless of mount state. Use this as a diagnostic
 too: if neither the direct host path nor this fallback works, the MCP connection itself (not the
 file path) is the problem.
@@ -342,7 +337,7 @@ After every `browser_snapshot` or `browser_screenshot`, check for:
 4. **Wait** for the user to confirm the challenge is resolved before resuming
 5. Do NOT attempt to solve, bypass, or retry past the challenge
 
-This applies to ALL sites — LinkedIn, Glassdoor, Greenhouse, Lever, Workday, or any other.
+This applies to every site.
 Captchas are a signal that automation has been detected; continuing will make it worse.
 
 ---
@@ -353,13 +348,12 @@ The container is configured with `restart: unless-stopped`, so it survives reboo
 The golden session's browser profile persists across restarts via a Docker named volume.
 
 ```bash
-export RESUME_REPO_PATH=... JOBS_REPO_PATH=...   # see "Before any sub-command" above
 cd <skill-dir>/assets
 
 docker compose up -d --build  # Start/rebuild
 docker compose restart        # Restart (reconnect MCP after)
 docker compose down           # Stop (golden profile preserved)
-docker compose down -v        # Stop and delete golden profile + storage state
+docker compose down -v        # Stop and delete golden profile + storage state (session cookies)
 ```
 
 ---

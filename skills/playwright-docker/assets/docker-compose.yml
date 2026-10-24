@@ -1,3 +1,24 @@
+# Security notes. This stack is a local development tool and makes these tradeoffs on purpose:
+#
+# - seccomp:unconfined and SYS_PTRACE: Chromium under Docker's default seccomp profile
+#   crashes or cannot start its crash handler, so these follow the common practice for
+#   Chromium-in-Docker images. The golden browser also runs with --no-sandbox, so the
+#   container, not Chromium's sandbox, is the isolation boundary. Only browse sites you
+#   would trust with that.
+# - noVNC (no password), both MCP servers (--allowed-hosts "*") and the golden browser's
+#   DevTools port listen on 0.0.0.0 inside the container. That is acceptable because the
+#   host publishes noVNC and MCP on 127.0.0.1 only (see `ports`) and does not publish
+#   DevTools, so nothing on the LAN can reach them. Local processes and other containers
+#   on playwright-network can, and they would be driving a logged-in browser.
+# - `golden export` writes the golden session's cookies and localStorage, which are live
+#   session credentials, as plaintext JSON in the storage-state volume. Remove them with
+#   `docker compose down -v` when you no longer need them (this also deletes the golden
+#   browser profile).
+#
+# Host directories for file uploads are not mounted here. List them in a local
+# docker-compose.override.yml (gitignored; copy docker-compose.override.example.yml), which
+# Docker Compose merges in automatically. See "File uploads" in SKILL.md.
+
 services:
   playwright-display:
     build:
@@ -6,17 +27,13 @@ services:
     container_name: playwright-display
     # Start as root to fix volume permissions, then supervisord runs processes as pwuser
     user: root
-    # Bind to localhost only — these expose a controllable browser + MCP servers and must
+    # Bind to localhost only: these expose a controllable browser + MCP servers and must
     # not be reachable from the LAN. Claude Code connects via SSE on 127.0.0.1.
     ports:
       - "127.0.0.1:6080:6080"   # noVNC web interface
       - "127.0.0.1:3080:3080"   # MCP SSE endpoint (isolated sessions)
       - "127.0.0.1:3081:3081"   # MCP SSE endpoint (golden session)
     volumes:
-      # Resume repo — canonical résumé, for uploads of the untailored resume.pdf
-      - ${RESUME_REPO_PATH:?set RESUME_REPO_PATH to the resume repo}:${RESUME_REPO_PATH}:ro
-      # Jobs repo — per-job tailored résumés at applications/<id>/resume.pdf (the usual upload).
-      - ${JOBS_REPO_PATH:?set JOBS_REPO_PATH to the jobs repo}:${JOBS_REPO_PATH}:ro
       # Workaround: Claude Code sends MCP roots as host paths → EACCES in container.
       # Custom start-mcp.sh adds --output-dir to override.
       - ./start-mcp.sh:/usr/local/bin/start-mcp.sh:ro

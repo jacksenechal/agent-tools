@@ -153,7 +153,9 @@ document.querySelectorAll('.mermaid').forEach(el => {{
   el.setAttribute('data-original', el.textContent);
 }});
 
-mermaid.initialize({{ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' }});
+// The report quotes text from whatever repo was scouted, so treat the markdown as untrusted:
+// 'strict' makes Mermaid encode HTML in labels and disables click handlers.
+mermaid.initialize({{ startOnLoad: true, theme: 'neutral', securityLevel: 'strict' }});
 </script>
 </body>
 </html>'''

@@ -4,7 +4,7 @@ Skills that are no longer active but kept for reference.
 
 ## pi-swarm
 
-Retired 2026-08-06: Jack stopped using the pi agentic tooling.
+Retired 2026-08-06: the author stopped using the pi agentic tooling.
 
 It depends on external artifacts that are also retired, so it will not
 work as-is if restored:

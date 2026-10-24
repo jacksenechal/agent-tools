@@ -42,6 +42,10 @@ fi
 
 [ -z "$text" ] && exit 0
 
+# agent-speak sits one level up from this script in the repo. Resolve through
+# the install symlink so the hook works wherever the repo is checked out.
+speak="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../agent-speak"
+
 # Detach so playback never delays the prompt returning to the user.
-printf '%s' "$text" | setsid "$HOME/.local/bin/agent-speak" >/dev/null 2>&1 &
+printf '%s' "$text" | setsid "$speak" >/dev/null 2>&1 &
 exit 0
