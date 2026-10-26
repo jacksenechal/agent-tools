@@ -58,7 +58,7 @@ Maps common skill categories to expected capability profiles. Use during Step 4 
 
 ## Destructive by Design
 
-**Purpose**: Delete files, clear caches, purge data — where destruction IS the stated intent.
+**Purpose**: Delete files, clear caches, purge data, where destruction IS the stated intent.
 
 **Reasonable capabilities**: Find and delete operations within disclosed scope. Bash for recursive operations. May need broad file system access within scope.
 
@@ -68,7 +68,7 @@ Maps common skill categories to expected capability profiles. Use during Step 4 
 
 ## Privacy-Sensitive (credentials, secrets)
 
-**Purpose**: Manage secrets, rotate keys, configure authentication — handling sensitive data IS the stated purpose.
+**Purpose**: Manage secrets, rotate keys, configure authentication, where handling sensitive data IS the stated purpose.
 
 **Reasonable capabilities**: Access credential files and secret stores (disclosed and scoped). May need network to communicate with secret management services (Vault, AWS Secrets Manager). Bash for CLI tools.
 
