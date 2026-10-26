@@ -2,7 +2,7 @@
 
 Use this file as a checklist during Step 4 (Analyze Alignment). For each category, check whether the skill exhibits any of the described patterns and whether they are justified by stated intent.
 
-**Convergence pattern**: In the wild, 100% of confirmed malicious skills combine malicious code with prompt injection simultaneously ([Snyk ToxicSkills research](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/)). If you find one, look harder for the other.
+**Convergence pattern**: In Snyk's ToxicSkills study, every confirmed malicious skill contained malicious code, and 91% combined it with prompt injection ([Snyk ToxicSkills research](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/)). If you find one, look harder for the other.
 
 ## 1. Data Exfiltration
 
