@@ -17,6 +17,10 @@ metadata:
 
 # Intent-Aligned Security Auditor
 
+Vets a third-party agent skill before you install or trust it. A read-only subagent reads the skill and reports whether what it can do matches what it says it does, so hostile content in the skill never enters the main agent's context.
+
+Usage: `/skill-security-auditor <target>`, where the target is an `https://` GitHub URL, a local skill directory, or an installed skill's name. The result is a plain-text report ending in a verdict: APPROVE, APPROVE WITH SAFEGUARDS, NEEDS REVIEW, or REJECT.
+
 ## Core Philosophy
 
 The question is NOT "does this skill have dangerous capabilities?"
