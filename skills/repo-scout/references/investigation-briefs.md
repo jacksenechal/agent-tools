@@ -4,7 +4,7 @@ Subagent prompts organized by phase. The main thread reads the relevant brief, r
 `REPO_PATH` with the actual path, and passes it as the subagent prompt.
 
 Each subagent returns **raw findings with file:line citations**. No synthesis, no
-opinions, no polished prose — the main thread handles that.
+opinions, no polished prose: the main thread handles that.
 
 ## Required preamble
 
@@ -32,7 +32,7 @@ Investigate the physical layout of the repository at `REPO_PATH`.
    dist, build, .next, target, venv, .venv, .tox, .mypy_cache, .pytest_cache
 2. For each major directory, count source files and estimate LOC. Use Bash:
    ```bash
-   find "$REPO_PATH" -type f \( -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.rs' -o -name '*.java' -o -name '*.rb' -o -name '*.c' -o -name '*.cpp' -o -name '*.h' -o -name '*.cs' -o -name '*.swift' -o -name '*.kt' -o -name '*.scala' -o -name '*.ex' -o -name '*.exs' -o -name '*.clj' -o -name '*.zig' \) -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/vendor/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/__pycache__/*' -not -path '*/target/*' -not -path '*/.next/*' -not -path '*/venv/*' -not -path '*/.venv/*' -print0 | head -z -n 2000 | xargs -0 wc -l 2>/dev/null | tail -1
+   find "$REPO_PATH" -type f \( -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.rs' -o -name '*.java' -o -name '*.rb' -o -name '*.c' -o -name '*.cpp' -o -name '*.h' -o -name '*.cs' -o -name '*.swift' -o -name '*.kt' -o -name '*.scala' -o -name '*.ex' -o -name '*.exs' -o -name '*.clj' -o -name '*.zig' \) -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/vendor/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/__pycache__/*' -not -path '*/target/*' -not -path '*/.next/*' -not -path '*/venv/*' -not -path '*/.venv/*' -exec cat {} + 2>/dev/null | wc -l
    ```
    Also break down by extension to get language distribution.
 3. Read README.md (first 100 lines) if it exists.
@@ -88,7 +88,7 @@ Investigate domain-specific terminology at `REPO_PATH`.
 **Return:**
 - Glossary: term → 1-sentence definition inferred from usage context
 - Each term: file:line where it's most clearly used or defined
-- If fewer than 15 domain terms exist, report what you find — don't pad
+- If fewer than 15 domain terms exist, report what you find; don't pad
 
 ---
 
@@ -120,7 +120,7 @@ Limit to 30 entries. If more exist, note the total.
 
 Trace one representative user action end-to-end at `REPO_PATH`.
 
-1. Find the primary entry point — the most central HTTP route (e.g., POST to create a
+1. Find the primary entry point: the most central HTTP route (e.g., POST to create a
    core resource, or GET for the main page). If no HTTP server, use the main CLI
    command or primary exported function.
 2. Trace step by step, reading actual code at each hop (don't guess from names):
@@ -224,7 +224,7 @@ pyproject.toml [tool.ruff], .editorconfig
 
 **Return:**
 - Categorized observations with file:line examples
-- Only report what you actually see — don't describe framework defaults
+- Only report what you actually see; don't describe framework defaults
 - Flag anything surprising or non-standard
 
 ---
